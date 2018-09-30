@@ -33,6 +33,7 @@ $DEBUG \
 $TS \
 --enable-phpdbg \
 --enable-fpm \
+--with-apxs2 \
 --with-pdo-mysql=mysqlnd \
 --with-mysqli=mysqlnd \
 --with-pgsql \
