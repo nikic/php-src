@@ -59,27 +59,6 @@ fp_except x = (fp_except) 0;
 ])
 
 dnl
-dnl Check for broken sprintf()
-dnl
-AC_DEFUN([AC_ZEND_BROKEN_SPRINTF],[
-  AC_CACHE_CHECK(whether sprintf is broken, ac_cv_broken_sprintf,[
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[main() {char buf[20];exit(sprintf(buf,"testing 123")!=11); }]])],[
-      ac_cv_broken_sprintf=no
-    ],[
-      ac_cv_broken_sprintf=yes
-    ],[
-      ac_cv_broken_sprintf=no
-    ])
-  ])
-  if test "$ac_cv_broken_sprintf" = "yes"; then
-    ac_result=1
-  else
-    ac_result=0
-  fi
-  AC_DEFINE_UNQUOTED(ZEND_BROKEN_SPRINTF, $ac_result, [Whether sprintf is broken])
-])
-
-dnl
 dnl AC_ZEND_C_BIGENDIAN
 dnl Replacement macro for AC_C_BIGENDIAN
 dnl
