@@ -1,4 +1,6 @@
-dist: xenial
+os: osx
+osx_image: xcode10.1
+#dist: xenial
 language: c
 sudo: required
 addons:
@@ -18,7 +20,13 @@ addons:
       - libxpm-dev
       - libzip-dev
       - libsqlite3-dev
-
+  homebrew:
+    packages:
+      - ccache
+      - bison
+      - re2c
+      - mysql
+      - openssl
 
 services:
   - mysql
@@ -50,22 +58,16 @@ env:
       - REPORT_EXIT_STATUS=1
     matrix:
       - ENABLE_MAINTAINER_ZTS=0 ENABLE_DEBUG=0
-      - ENABLE_MAINTAINER_ZTS=1 ENABLE_DEBUG=1
+      #- ENABLE_MAINTAINER_ZTS=1 ENABLE_DEBUG=1
 
 before_script:
     - ccache --version
     - ccache --zero-stats
     - export USE_CCACHE=1
-    # Enable IPv6
-    - sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
-    # Compile PHP
+    - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then . ./travis/setup_linux.sh; fi
+    - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then . ./travis/setup_osx.sh; fi
     - ./travis/compile.sh
-    # Setup Extensions
-    - . ./travis/ext/mysql/setup.sh
-    - . ./travis/ext/mysqli/setup.sh
-    - . ./travis/ext/pdo_mysql/setup.sh
-    - . ./travis/ext/pgsql/setup.sh
-    - . ./travis/ext/pdo_pgsql/setup.sh
+    - . ./travis/setup_common.sh
 
 # Run PHPs run-tests.php
 script:
