@@ -30,4 +30,4 @@ echo "Legacy constructor: ";
 $o = new LegacyConstructor;
 --EXPECT--
 New constructor: ctor executed
-Legacy constructor: ctor executed
+Legacy constructor:
