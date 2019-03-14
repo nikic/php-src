@@ -1291,7 +1291,7 @@ static zend_bool try_preparse_arrow_function() {
     int token, level = 1;
     for (;;) {
         NEXT_TOKEN();
-        if (token == '(') {
+        if (token == '(' || token == T_ARROW_START) {
             level++;
         } else if (token == ')') {
             level--;
@@ -1312,6 +1312,7 @@ static zend_bool try_preparse_arrow_function() {
 }
 
 static zend_bool is_arrow_function() {
+    // TODO Don't perform nestead scanahead?
     zend_lex_state current_state;
     zend_bool retval;
 
@@ -1322,6 +1323,7 @@ static zend_bool is_arrow_function() {
 
     zend_exception_restore();
     zend_restore_lexical_state(&current_state);
+    CG(increment_lineno) = 0;
     return retval;
 }
 
