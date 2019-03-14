@@ -1232,6 +1232,99 @@ static void copy_heredoc_label_stack(void *void_heredoc_label)
 		goto skip_token; \
 	} while (0)
 
+#define NEXT_TOKEN() \
+    if (!(token = next_lookahead_token())) { return 0; }
+#define NEXT_TOKEN_SKIP_WS() \
+    if (!(token = next_lookahead_token_skip_ws())) { return 0; }
+
+static int next_lookahead_token() {
+    zval zv;
+    int retval;
+    ZVAL_UNDEF(&zv);
+    retval = lex_scan(&zv, NULL);
+    zval_ptr_dtor_nogc(&zv);
+    if (EG(exception)) {
+        zend_clear_exception();
+        return 0;
+    }
+    return retval;
+}
+
+static int next_lookahead_token_skip_ws() {
+    int token;
+    for (;;) {
+        NEXT_TOKEN();
+        if (token == T_WHITESPACE || token == T_COMMENT || token == T_DOC_COMMENT) {
+            continue;
+        }
+        return token;
+    }
+}
+
+static zend_bool try_preparse_type() {
+    int token;
+    NEXT_TOKEN_SKIP_WS();
+    if (token == '?') {
+        NEXT_TOKEN_SKIP_WS();
+    }
+    if (token == T_ARRAY || token == T_CALLABLE) {
+        NEXT_TOKEN_SKIP_WS();
+        return 1;
+    }
+    if (token == T_NS_SEPARATOR) {
+        NEXT_TOKEN_SKIP_WS();
+    }
+    for (;;) {
+        if (token != T_STRING) {
+            return 0;
+        }
+        NEXT_TOKEN_SKIP_WS();
+        if (token != T_NS_SEPARATOR) {
+            return 1;
+        }
+        NEXT_TOKEN_SKIP_WS();
+    }
+}
+
+static zend_bool try_preparse_arrow_function() {
+    /* Find corresponding ')' */
+    int token, level = 1;
+    for (;;) {
+        NEXT_TOKEN();
+        if (token == '(') {
+            level++;
+        } else if (token == ')') {
+            level--;
+            if (level == 0) {
+                break;
+            }
+        }
+    }
+
+    NEXT_TOKEN_SKIP_WS();
+    if (token == ':') {
+        if (!try_preparse_type()) {
+            return 0;
+        }
+    }
+
+    return token == T_DOUBLE_ARROW;
+}
+
+static zend_bool is_arrow_function() {
+    zend_lex_state current_state;
+    zend_bool retval;
+
+    zend_save_lexical_state(&current_state);
+    zend_exception_save();
+
+    retval = try_preparse_arrow_function();
+
+    zend_exception_restore();
+    zend_restore_lexical_state(&current_state);
+    return retval;
+}
+
 int ZEND_FASTCALL lex_scan(zval *zendlval, zend_parser_stack_elem *elem)
 {
 int token;
@@ -1252,7 +1345,7 @@ BNUM	"0b"[01]+
 LABEL	[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*
 WHITESPACE [ \n\r\t]+
 TABS_AND_SPACES [ \t]*
-TOKENS [;:,.\[\]()|^&+-/*=%!~$<>?@]
+TOKENS [;:,.\[\])|^&+-/*=%!~$<>?@]
 ANY_CHAR [^]
 NEWLINE ("\r"|"\n"|"\r\n")
 
@@ -1265,10 +1358,6 @@ NEWLINE ("\r"|"\n"|"\r\n")
 
 <ST_IN_SCRIPTING>"die" {
 	RETURN_TOKEN(T_EXIT);
-}
-
-<ST_IN_SCRIPTING>"fn" {
-	RETURN_TOKEN(T_FN);
 }
 
 <ST_IN_SCRIPTING>"function" {
@@ -1721,6 +1810,12 @@ NEWLINE ("\r"|"\n"|"\r\n")
 	RETURN_TOKEN(yytext[0]);
 }
 
+<ST_IN_SCRIPTING>"(" {
+    if (is_arrow_function()) {
+        RETURN_TOKEN(T_ARROW_START);
+    }
+    RETURN_TOKEN('(');
+}
 
 <ST_IN_SCRIPTING>"{" {
 	yy_push_state(ST_IN_SCRIPTING);
@@ -2037,7 +2132,7 @@ inline_char_handler:
 	RETURN_TOKEN(']');
 }
 
-<ST_VAR_OFFSET>{TOKENS}|[{}"`] {
+<ST_VAR_OFFSET>{TOKENS}|[({}"`] {
 	/* Only '[' or '-' can be valid, but returning other tokens will allow a more explicit parse error */
 	RETURN_TOKEN(yytext[0]);
 }
