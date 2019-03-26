@@ -196,7 +196,7 @@ static zend_string *_get_parent_class_name(zend_class_entry *ce)
 static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_string *name)
 { /* {{{ */
 	zend_class_entry *ce = fe->common.scope;
-	/* if there isn't a class then we shouldn't be resolving parent and self */
+	/* If there isn't a class then we shouldn't be resolving parent and self. */
 	ZEND_ASSERT(ce);
 
 	switch (zend_get_class_fetch_type(name)) {
@@ -212,18 +212,18 @@ static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_strin
 			break;
 
 		case ZEND_FETCH_CLASS_DEFAULT:
-			/* already resolved */
+			/* Already resolved. */
 			break;
 
 		case ZEND_FETCH_CLASS_STATIC:
-			/* This currently a syntax error */
+			/* This is currently a syntax error. */
 			ZEND_ASSERT(0);
 			break;
 
 		EMPTY_SWITCH_DEFAULT_CASE();
 	}
 
-	return zend_string_copy(name);
+	return name;
 } /* }}} */
 
 static zend_bool class_visible(zend_class_entry *ce) {
@@ -285,7 +285,6 @@ static inheritance_status _check_covariance(
 			zend_string *proto_class_name =
 				_resolve_parent_and_self(proto, ZEND_TYPE_NAME(proto_type));
 			if (!proto_class_name) {
-				zend_string_free(fe_class_name);
 				return INHERITANCE_UNRESOLVED;
 			}
 
@@ -308,7 +307,6 @@ static inheritance_status _check_covariance(
 					code = INHERITANCE_ERROR;
 				}
 			}
-			zend_string_release(proto_class_name);
 		} else if (proto_type_code == IS_ITERABLE) {
 			zend_class_entry *fe_ce = lookup_class(fe_class_name);
 			if (fe_ce) {
@@ -325,7 +323,6 @@ static inheritance_status _check_covariance(
 			code = INHERITANCE_ERROR;
 		}
 
-		zend_string_release(fe_class_name);
 		return code;
 	} else if (ZEND_TYPE_IS_CLASS(proto_type)) {
 		return INHERITANCE_ERROR;
