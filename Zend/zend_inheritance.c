@@ -216,10 +216,9 @@ static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_strin
 			break;
 
 		case ZEND_FETCH_CLASS_STATIC:
-			/* Note: this currently a syntax error */
-			zend_error_noreturn(E_COMPILE_ERROR,
-				"Cannot use static as a type constraint in %s::%s()",
-				ZEND_FN_SCOPE_NAME(fe), ZSTR_VAL(fe->common.function_name));
+			/* This currently a syntax error */
+			ZEND_ASSERT(0);
+			break;
 
 		EMPTY_SWITCH_DEFAULT_CASE();
 	}
