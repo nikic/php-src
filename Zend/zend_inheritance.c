@@ -252,14 +252,13 @@ typedef enum {
 	INHERITANCE_UNRESOLVED = -1,
 	INHERITANCE_ERROR = 0,
 	INHERITANCE_SUCCESS = 1,
-} _inheritance_status;
+} inheritance_status;
 
 /* Parameters are contravariant; return types are covariant. We can rely on
  * the fact that they are inverses to improve correctness and simplify code.
  * We can implement covariance, and then implement contravariance simply by
  * reversing the argument order. */
-static
-_inheritance_status _check_covariance(
+static inheritance_status _check_covariance(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info)
 { /* {{{ */
@@ -276,7 +275,7 @@ _inheritance_status _check_covariance(
 	}
 
 	if (ZEND_TYPE_IS_CLASS(fe_type)) {
-		_inheritance_status code;
+		inheritance_status code;
 		zend_string *fe_class_name = _resolve_parent_and_self(fe, ZEND_TYPE_NAME(fe_type));
 		if (!fe_class_name) {
 			return INHERITANCE_UNRESOLVED;
@@ -340,8 +339,7 @@ _inheritance_status _check_covariance(
 }
  /* }}} */
 
-static
-_inheritance_status _check_inherited_return_type(
+static inheritance_status _check_inherited_return_type(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info) /* {{{ */
 {
@@ -359,8 +357,7 @@ static zend_bool _missing_internal_arginfo(zend_function const *fn)
 	return !fn->common.arg_info && fn->common.type == ZEND_INTERNAL_FUNCTION;
 }
 
-static
-_inheritance_status _check_inherited_parameter_type(
+static inheritance_status _check_inherited_parameter_type(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info) /* {{{ */
 {
@@ -385,11 +382,11 @@ _inheritance_status _check_inherited_parameter_type(
 }
 /* }}} */
 
-static
-_inheritance_status zend_do_perform_implementation_check(const zend_function *fe, const zend_function *proto) /* {{{ */
+static inheritance_status zend_do_perform_implementation_check(
+		const zend_function *fe, const zend_function *proto) /* {{{ */
 {
 	uint32_t i, num_args;
-	_inheritance_status status;
+	inheritance_status status;
 
 	/* If it's a user function then arg_info == NULL means we don't have any parameters but
 	 * we still need to do the arg number checks.  We are only willing to ignore this for internal
@@ -453,7 +450,7 @@ _inheritance_status zend_do_perform_implementation_check(const zend_function *fe
 			? &proto->common.arg_info[i]
 			: &proto->common.arg_info[proto->common.num_args];
 
-		_inheritance_status local_status =
+		inheritance_status local_status =
 			_check_inherited_parameter_type(fe, fe_arg_info, proto, proto_arg_info);
 		if (local_status == INHERITANCE_ERROR) {
 			return INHERITANCE_ERROR;
@@ -465,9 +462,9 @@ _inheritance_status zend_do_perform_implementation_check(const zend_function *fe
 	/* Check return type compatibility, but only if the prototype already specifies
 	 * a return type. Adding a new return type is always valid. */
 	if (proto->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-		_inheritance_status local_result =
-			_check_inherited_return_type(fe, fe->common.arg_info - 1,
-			                             proto, proto->common.arg_info - 1);
+		inheritance_status local_result =
+			_check_inherited_return_type(
+				fe, fe->common.arg_info - 1, proto, proto->common.arg_info - 1);
 		if (local_result == INHERITANCE_ERROR) {
 			return INHERITANCE_ERROR;
 		} else if (local_result == INHERITANCE_UNRESOLVED) {
