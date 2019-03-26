@@ -184,7 +184,7 @@ static zend_always_inline zend_bool zend_iterable_compatibility_check(zend_arg_i
 }
 /* }}} */
 
-static zend_string *_get_parent_class_name(zend_class_entry *ce)
+static zend_string *get_parent_class_name(zend_class_entry *ce)
 {
 	if (ce->ce_flags & ZEND_ACC_LINKED) {
 		return ce->parent ? ce->parent->name : NULL;
@@ -193,7 +193,7 @@ static zend_string *_get_parent_class_name(zend_class_entry *ce)
 	}
 }
 
-static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_string *name)
+static zend_string *resolve_parent_and_self(const zend_function *fe, zend_string *name)
 { /* {{{ */
 	zend_class_entry *ce = fe->common.scope;
 	/* If there isn't a class then we shouldn't be resolving parent and self. */
@@ -201,7 +201,7 @@ static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_strin
 
 	switch (zend_get_class_fetch_type(name)) {
 		case ZEND_FETCH_CLASS_PARENT:
-			name = _get_parent_class_name(ce);
+			name = get_parent_class_name(ce);
 			if (!name) {
 				return NULL;
 			}
@@ -239,13 +239,22 @@ static zend_bool class_visible(zend_class_entry *ce) {
 	}
 }
 
-zend_class_entry *lookup_class(zend_string *name) {
+static zend_class_entry *lookup_class(zend_string *name) {
 	zend_class_entry *ce = zend_lookup_class(name);
 	if (!ce) {
 		return NULL;
 	}
 
 	return class_visible(ce) ? ce : NULL;
+}
+
+static zend_class_entry *resolve_and_lookup_class(const zend_function *fe, zend_string *name) {
+	zend_string *resolved_name = resolve_parent_and_self(fe, name);
+	if (!resolved_name) {
+		return NULL;
+	}
+
+	return lookup_class(resolved_name);
 }
 
 typedef enum {
@@ -274,65 +283,65 @@ static inheritance_status _check_covariance(
 		return INHERITANCE_ERROR;
 	}
 
-	if (ZEND_TYPE_IS_CLASS(fe_type)) {
-		inheritance_status code;
-		zend_string *fe_class_name = _resolve_parent_and_self(fe, ZEND_TYPE_NAME(fe_type));
-		if (!fe_class_name) {
+	if (ZEND_TYPE_IS_CLASS(proto_type)) {
+		zend_string *proto_class_name;
+		zend_string *fe_class_name;
+		if (!ZEND_TYPE_IS_CLASS(fe_type)) {
+			return INHERITANCE_ERROR;
+		}
+
+		proto_class_name = resolve_parent_and_self(proto, ZEND_TYPE_NAME(proto_type));
+		fe_class_name = resolve_parent_and_self(fe, ZEND_TYPE_NAME(fe_type));
+		if (!proto_class_name || !fe_class_name) {
 			return INHERITANCE_UNRESOLVED;
 		}
 
-		if (ZEND_TYPE_IS_CLASS(proto_type)) {
-			zend_string *proto_class_name =
-				_resolve_parent_and_self(proto, ZEND_TYPE_NAME(proto_type));
-			if (!proto_class_name) {
+		if (zend_string_equals_ci(fe_class_name, proto_class_name)) {
+			return INHERITANCE_SUCCESS;
+		}
+
+		if (fe->common.type == ZEND_USER_FUNCTION) {
+			zend_class_entry *fe_ce = lookup_class(fe_class_name);
+			zend_class_entry *proto_ce = lookup_class(proto_class_name);
+			if (!fe_ce || !proto_ce) {
 				return INHERITANCE_UNRESOLVED;
 			}
 
-			if (zend_string_equals_ci(fe_class_name, proto_class_name)) {
-				code = INHERITANCE_SUCCESS;
-			} else {
-				if (fe->common.type == ZEND_USER_FUNCTION) {
-					zend_class_entry *fe_ce = lookup_class(fe_class_name);
-					zend_class_entry *proto_ce = lookup_class(proto_class_name);
-
-					if (fe_ce && proto_ce) {
-						code = instanceof_function(fe_ce, proto_ce)
-							? INHERITANCE_SUCCESS
-							: INHERITANCE_ERROR;
-					} else {
-						code = INHERITANCE_UNRESOLVED;
-					}
-				} else {
-					/* todo: what should this actually do? */
-					code = INHERITANCE_ERROR;
-				}
-			}
-		} else if (proto_type_code == IS_ITERABLE) {
-			zend_class_entry *fe_ce = lookup_class(fe_class_name);
-			if (fe_ce) {
-				code = instanceof_function(fe_ce, zend_ce_traversable)
-					? INHERITANCE_SUCCESS
-					: INHERITANCE_ERROR;
-			} else {
-				code = INHERITANCE_UNRESOLVED;
-			}
-		} else if (proto_type_code == IS_OBJECT) {
-			zend_class_entry *fe_ce = lookup_class(fe_class_name);
-			code = fe_ce ? INHERITANCE_SUCCESS : INHERITANCE_UNRESOLVED;
+			return instanceof_function(fe_ce, proto_ce)
+				? INHERITANCE_SUCCESS
+				: INHERITANCE_ERROR;
 		} else {
-			code = INHERITANCE_ERROR;
+			/* TODO: what should this actually do? */
+			return INHERITANCE_ERROR;
 		}
-
-		return code;
-	} else if (ZEND_TYPE_IS_CLASS(proto_type)) {
-		return INHERITANCE_ERROR;
-	} else if (proto_type_code == IS_ITERABLE) {
-		return fe_type_code == IS_ARRAY ? INHERITANCE_SUCCESS : INHERITANCE_ERROR;
-	} else if (fe_type_code == proto_type_code) {
-		return INHERITANCE_SUCCESS;
 	}
 
-	return INHERITANCE_ERROR;
+	switch (proto_type_code) {
+		case IS_ITERABLE:
+			if (ZEND_TYPE_IS_CLASS(fe_type)) {
+				zend_class_entry *fe_ce = resolve_and_lookup_class(fe, ZEND_TYPE_NAME(fe_type));
+				if (!fe_ce) {
+					return INHERITANCE_UNRESOLVED;
+				}
+				return instanceof_function(fe_ce, zend_ce_traversable)
+					? INHERITANCE_SUCCESS : INHERITANCE_ERROR;
+			}
+			return fe_type_code == IS_ITERABLE || fe_type_code == IS_ARRAY
+				? INHERITANCE_SUCCESS : INHERITANCE_ERROR;
+
+		case IS_OBJECT:
+			if (ZEND_TYPE_IS_CLASS(fe_type)) {
+				zend_class_entry *fe_ce = resolve_and_lookup_class(fe, ZEND_TYPE_NAME(fe_type));
+				if (!fe_ce) {
+					return INHERITANCE_UNRESOLVED;
+				}
+				return INHERITANCE_SUCCESS;
+			}
+			return fe_type_code == IS_OBJECT ? INHERITANCE_SUCCESS : INHERITANCE_ERROR;
+
+		default:
+			return fe_type_code == proto_type_code ? INHERITANCE_SUCCESS : INHERITANCE_ERROR;
+	}
 }
  /* }}} */
 
