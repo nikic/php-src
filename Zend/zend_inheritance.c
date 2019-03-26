@@ -2171,9 +2171,11 @@ static void _inheritance_runtime_error_msg(zend_function *child, zend_function *
 		verb = "must";
 	}
 	{
+		ZEND_ASSERT(child->type == ZEND_USER_FUNCTION);
 		zend_string *method_prototype = zend_get_function_declaration(parent);
 		zend_string *child_prototype = zend_get_function_declaration(child);
-		zend_error(level, "Declaration of %s %s be compatible with %s",
+		zend_error_at(level, NULL, child->op_array.line_start,
+			"Declaration of %s %s be compatible with %s",
 			ZSTR_VAL(child_prototype), verb, ZSTR_VAL(method_prototype));
 		zend_string_efree(child_prototype);
 		zend_string_efree(method_prototype);
