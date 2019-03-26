@@ -320,7 +320,8 @@ _inheritance_status _check_covariance(
 				code = INHERITANCE_UNRESOLVED;
 			}
 		} else if (proto_type_code == IS_OBJECT) {
-			code = INHERITANCE_SUCCESS;
+			zend_class_entry *fe_ce = lookup_class(fe_class_name);
+			code = fe_ce ? INHERITANCE_SUCCESS : INHERITANCE_UNRESOLVED;
 		} else {
 			code = INHERITANCE_ERROR;
 		}
