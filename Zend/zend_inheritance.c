@@ -226,6 +226,28 @@ static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_strin
 	return zend_string_copy(name);
 } /* }}} */
 
+static zend_bool class_visible(zend_class_entry *ce) {
+	if (CG(in_compilation)) {
+		return 1;
+	}
+	if (ce->type == ZEND_INTERNAL_CLASS) {
+		return !(CG(compiler_options) & ZEND_COMPILE_IGNORE_INTERNAL_CLASSES);
+	} else {
+		ZEND_ASSERT(ce->type == ZEND_USER_CLASS);
+		return !(CG(compiler_options) & ZEND_COMPILE_IGNORE_OTHER_FILES)
+			|| ce->info.user.filename == CG(compiled_filename);
+	}
+}
+
+zend_class_entry *lookup_class(zend_string *name) {
+	zend_class_entry *ce = zend_lookup_class(name);
+	if (!ce) {
+		return NULL;
+	}
+
+	return class_visible(ce) ? ce : NULL;
+}
+
 typedef enum {
 	INHERITANCE_UNRESOLVED = -1,
 	INHERITANCE_ERROR = 0,
@@ -272,8 +294,8 @@ _inheritance_status _check_covariance(
 				code = INHERITANCE_SUCCESS;
 			} else {
 				if (fe->common.type == ZEND_USER_FUNCTION) {
-					zend_class_entry *fe_ce = zend_lookup_class(fe_class_name);
-					zend_class_entry *proto_ce = zend_lookup_class(proto_class_name);
+					zend_class_entry *fe_ce = lookup_class(fe_class_name);
+					zend_class_entry *proto_ce = lookup_class(proto_class_name);
 
 					if (fe_ce && proto_ce) {
 						code = instanceof_function(fe_ce, proto_ce)
@@ -289,7 +311,7 @@ _inheritance_status _check_covariance(
 			}
 			zend_string_release(proto_class_name);
 		} else if (proto_type_code == IS_ITERABLE) {
-			zend_class_entry *fe_ce = zend_lookup_class(fe_class_name);
+			zend_class_entry *fe_ce = lookup_class(fe_class_name);
 			if (fe_ce) {
 				code = instanceof_function(fe_ce, zend_ce_traversable)
 					? INHERITANCE_SUCCESS
