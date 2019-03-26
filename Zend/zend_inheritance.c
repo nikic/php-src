@@ -240,12 +240,18 @@ static zend_bool class_visible(zend_class_entry *ce) {
 }
 
 static zend_class_entry *lookup_class(zend_string *name) {
-	zend_class_entry *ce = zend_lookup_class(name);
-	if (!ce) {
-		return NULL;
+	zend_class_entry *ce;
+	if (EG(active)) {
+		ce = zend_lookup_class(name);
+	} else {
+		/* When a class lookup is necessary during internal class registration in early
+		 * startup, look it up in CG(class_table), as the executor is not active yet. */
+		zend_string *lcname = zend_string_tolower(name);
+		ce = zend_hash_find_ptr(CG(class_table), lcname);
+		zend_string_release(lcname);
 	}
 
-	return class_visible(ce) ? ce : NULL;
+	return ce && class_visible(ce) ? ce : NULL;
 }
 
 static zend_class_entry *resolve_and_lookup_class(const zend_function *fe, zend_string *name) {
@@ -284,8 +290,8 @@ static inheritance_status _check_covariance(
 	}
 
 	if (ZEND_TYPE_IS_CLASS(proto_type)) {
-		zend_string *proto_class_name;
-		zend_string *fe_class_name;
+		zend_string *proto_class_name, *fe_class_name;
+		zend_class_entry *proto_ce, *fe_ce;
 		if (!ZEND_TYPE_IS_CLASS(fe_type)) {
 			return INHERITANCE_ERROR;
 		}
@@ -300,20 +306,15 @@ static inheritance_status _check_covariance(
 			return INHERITANCE_SUCCESS;
 		}
 
-		if (fe->common.type == ZEND_USER_FUNCTION) {
-			zend_class_entry *fe_ce = lookup_class(fe_class_name);
-			zend_class_entry *proto_ce = lookup_class(proto_class_name);
-			if (!fe_ce || !proto_ce) {
-				return INHERITANCE_UNRESOLVED;
-			}
-
-			return instanceof_function(fe_ce, proto_ce)
-				? INHERITANCE_SUCCESS
-				: INHERITANCE_ERROR;
-		} else {
-			/* TODO: what should this actually do? */
-			return INHERITANCE_ERROR;
+		fe_ce = lookup_class(fe_class_name);
+		proto_ce = lookup_class(proto_class_name);
+		if (!fe_ce || !proto_ce) {
+			return INHERITANCE_UNRESOLVED;
 		}
+
+		return instanceof_function(fe_ce, proto_ce)
+			? INHERITANCE_SUCCESS
+			: INHERITANCE_ERROR;
 	}
 
 	switch (proto_type_code) {

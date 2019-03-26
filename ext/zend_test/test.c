@@ -179,10 +179,36 @@ static int zend_test_class_call_method(zend_string *method, zend_object *object,
 }
 /* }}} */
 
+static ZEND_METHOD(_ZendTestClass, varianceTest) /* {{{ */ {
+	RETURN_TRUE;
+}
+/* }}} */
+
+static ZEND_METHOD(_ZendTestChildClass, varianceTest) /* {{{ */ {
+	RETURN_TRUE;
+}
+/* }}} */
+
 static ZEND_METHOD(_ZendTestTrait, testMethod) /* {{{ */ {
 	RETURN_TRUE;
 }
 /* }}} */
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_parent, 0, 0, _ZendTestClass, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_child, 0, 0, _ZendTestChildClass, 0)
+ZEND_END_ARG_INFO()
+
+static const zend_function_entry zend_test_class_methods[] = {
+    ZEND_ME(_ZendTestClass, varianceTest, arginfo_parent, ZEND_ACC_PUBLIC)
+    ZEND_FE_END
+};
+
+static const zend_function_entry zend_test_child_class_methods[] = {
+    ZEND_ME(_ZendTestChildClass, varianceTest, arginfo_child, ZEND_ACC_PUBLIC)
+    ZEND_FE_END
+};
 
 static const zend_function_entry zend_test_trait_methods[] = {
     ZEND_ME(_ZendTestTrait, testMethod, NULL, ZEND_ACC_PUBLIC)
@@ -196,7 +222,7 @@ PHP_MINIT_FUNCTION(zend_test)
 	INIT_CLASS_ENTRY(class_entry, "_ZendTestInterface", NULL);
 	zend_test_interface = zend_register_internal_interface(&class_entry);
 	zend_declare_class_constant_long(zend_test_interface, ZEND_STRL("DUMMY"), 0);
-	INIT_CLASS_ENTRY(class_entry, "_ZendTestClass", NULL);
+	INIT_CLASS_ENTRY(class_entry, "_ZendTestClass", zend_test_class_methods);
 	zend_test_class = zend_register_internal_class_ex(&class_entry, NULL);
 	zend_class_implements(zend_test_class, 1, zend_test_interface);
 	zend_test_class->create_object = zend_test_class_new;
@@ -234,7 +260,7 @@ PHP_MINIT_FUNCTION(zend_test)
 		zend_string_release(name);
 	}
 
-	INIT_CLASS_ENTRY(class_entry, "_ZendTestChildClass", NULL);
+	INIT_CLASS_ENTRY(class_entry, "_ZendTestChildClass", zend_test_child_class_methods);
 	zend_test_child_class = zend_register_internal_class_ex(&class_entry, zend_test_class);
 
 	memcpy(&zend_test_class_handlers, &std_object_handlers, sizeof(zend_object_handlers));
