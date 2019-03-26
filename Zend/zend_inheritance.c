@@ -184,34 +184,27 @@ static zend_always_inline zend_bool zend_iterable_compatibility_check(zend_arg_i
 }
 /* }}} */
 
-/* todo: this is probably useful elsewhere too */
-/* caller is responsible for adding any necessary refcount */
 static zend_string *_get_parent_class_name(zend_class_entry *ce)
-{ /* {{{ */
-	zend_string *pname;
-
+{
 	if (ce->ce_flags & ZEND_ACC_LINKED) {
-		ZEND_ASSERT(ce->parent);
-		pname = ce->parent->name;
+		return ce->parent ? ce->parent->name : NULL;
 	} else {
-		pname = ce->parent_name;
+		return ce->parent_name;
 	}
+}
 
-	/* If there is a parent, it must have a name */
-	ZEND_ASSERT(pname);
-	return pname;
-}/* }}} */
-
-static
-zend_string *_resolve_parent_and_self(const zend_function *fe, zend_string *name)
+static zend_string *_resolve_parent_and_self(const zend_function *fe, zend_string *name)
 { /* {{{ */
 	zend_class_entry *ce = fe->common.scope;
 	/* if there isn't a class then we shouldn't be resolving parent and self */
-	ZEND_ASSERT(fe->common.scope);
+	ZEND_ASSERT(ce);
 
 	switch (zend_get_class_fetch_type(name)) {
 		case ZEND_FETCH_CLASS_PARENT:
 			name = _get_parent_class_name(ce);
+			if (!name) {
+				return NULL;
+			}
 			break;
 
 		case ZEND_FETCH_CLASS_SELF:
@@ -262,12 +255,19 @@ _inheritance_status _check_covariance(
 	}
 
 	if (ZEND_TYPE_IS_CLASS(fe_type)) {
-		zend_string *fe_class_name =
-			_resolve_parent_and_self(fe, ZEND_TYPE_NAME(fe_type));
 		_inheritance_status code;
+		zend_string *fe_class_name = _resolve_parent_and_self(fe, ZEND_TYPE_NAME(fe_type));
+		if (!fe_class_name) {
+			return INHERITANCE_UNRESOLVED;
+		}
+
 		if (ZEND_TYPE_IS_CLASS(proto_type)) {
 			zend_string *proto_class_name =
 				_resolve_parent_and_self(proto, ZEND_TYPE_NAME(proto_type));
+			if (!proto_class_name) {
+				zend_string_free(fe_class_name);
+				return INHERITANCE_UNRESOLVED;
+			}
 
 			if (zend_string_equals_ci(fe_class_name, proto_class_name)) {
 				code = INHERITANCE_SUCCESS;
