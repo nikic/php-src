@@ -273,7 +273,7 @@ typedef enum {
  * the fact that they are inverses to improve correctness and simplify code.
  * We can implement covariance, and then implement contravariance simply by
  * reversing the argument order. */
-static inheritance_status _check_covariance(
+static inheritance_status check_covariance(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info)
 { /* {{{ */
@@ -346,7 +346,7 @@ static inheritance_status _check_covariance(
 }
  /* }}} */
 
-static inheritance_status _check_inherited_return_type(
+static inheritance_status check_inherited_return_type(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info) /* {{{ */
 {
@@ -355,21 +355,20 @@ static inheritance_status _check_inherited_return_type(
 		return INHERITANCE_ERROR;
 	}
 
-	return _check_covariance(fe, fe_arg_info, proto, proto_arg_info);
+	return check_covariance(fe, fe_arg_info, proto, proto_arg_info);
 }
 
-
-static zend_bool _missing_internal_arginfo(zend_function const *fn)
+static zend_bool missing_internal_arginfo(zend_function const *fn)
 {
 	return !fn->common.arg_info && fn->common.type == ZEND_INTERNAL_FUNCTION;
 }
 
-static inheritance_status _check_inherited_parameter_type(
+static inheritance_status check_inherited_parameter_type(
 	const zend_function *fe, zend_arg_info *fe_arg_info,
 	const zend_function *proto, zend_arg_info *proto_arg_info) /* {{{ */
 {
 
-	/* by-ref constraints on arguments are invariant */
+	/* By-ref constraints on arguments are invariant */
 	if (fe_arg_info->pass_by_reference != proto_arg_info->pass_by_reference) {
 		return INHERITANCE_ERROR;
 	}
@@ -385,7 +384,7 @@ static inheritance_status _check_inherited_parameter_type(
 	}
 
 	/* CONTRAVARIANT is inverse of COVARIANT, so call with reversed args. */
-	return _check_covariance(proto, proto_arg_info, fe, fe_arg_info);
+	return check_covariance(proto, proto_arg_info, fe, fe_arg_info);
 }
 /* }}} */
 
@@ -399,7 +398,7 @@ static inheritance_status zend_do_perform_implementation_check(
 	 * we still need to do the arg number checks.  We are only willing to ignore this for internal
 	 * functions because extensions don't always define arg_info.
 	 */
-	if (_missing_internal_arginfo(proto)) {
+	if (missing_internal_arginfo(proto)) {
 		return INHERITANCE_SUCCESS;
 	}
 
@@ -458,7 +457,7 @@ static inheritance_status zend_do_perform_implementation_check(
 			: &proto->common.arg_info[proto->common.num_args];
 
 		inheritance_status local_status =
-			_check_inherited_parameter_type(fe, fe_arg_info, proto, proto_arg_info);
+			check_inherited_parameter_type(fe, fe_arg_info, proto, proto_arg_info);
 		if (local_status == INHERITANCE_ERROR) {
 			return INHERITANCE_ERROR;
 		} else if (local_status == INHERITANCE_UNRESOLVED) {
@@ -470,7 +469,7 @@ static inheritance_status zend_do_perform_implementation_check(
 	 * a return type. Adding a new return type is always valid. */
 	if (proto->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
 		inheritance_status local_result =
-			_check_inherited_return_type(
+			check_inherited_return_type(
 				fe, fe->common.arg_info - 1, proto, proto->common.arg_info - 1);
 		if (local_result == INHERITANCE_ERROR) {
 			return INHERITANCE_ERROR;
@@ -750,7 +749,7 @@ static void do_inheritance_check_on_method(zend_function *child, zend_function *
 					error_level = E_COMPILE_ERROR;
 					error_verb = "must";
 				} else if ((parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) &&
-				           !_check_inherited_return_type(child, child->common.arg_info - 1, parent, parent->common.arg_info - 1)) {
+				           !check_inherited_return_type(child, child->common.arg_info - 1, parent, parent->common.arg_info - 1)) {
 					error_level = E_COMPILE_ERROR;
 					error_verb = "must";
 				} else {
@@ -2181,7 +2180,7 @@ ZEND_API void zend_do_link_class(zend_class_entry *ce, zend_class_entry *parent)
 }
 /* }}} */
 
-static void _inheritance_runtime_error_msg(zend_function *child, zend_function *parent)
+static void inheritance_runtime_error_msg(zend_function *child, zend_function *parent)
 {
 	int level = E_WARNING;
 	const char *verb = "should";
@@ -2189,7 +2188,7 @@ static void _inheritance_runtime_error_msg(zend_function *child, zend_function *
 	if ((parent->common.fn_flags & ZEND_ACC_ABSTRACT)
 	    || (
 	        (parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE)
-	        && _check_inherited_return_type(child, child->common.arg_info - 1,
+	        && check_inherited_return_type(child, child->common.arg_info - 1,
 	                                        parent, parent->common.arg_info - 1) != INHERITANCE_SUCCESS
 	    ))
 	{
@@ -2232,7 +2231,7 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 
 		/* We are only willing to ignore this for internal functions because
 		 * extensions don't always define arg_info. */
-		if (_missing_internal_arginfo(parent)) {
+		if (missing_internal_arginfo(parent)) {
 			continue;
 		}
 
@@ -2254,11 +2253,13 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 			 * specifies a return type. Adding a new return type is always valid. */
 			if (parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
 				if (child->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-					int check = _check_inherited_return_type(
+					inheritance_status status = check_inherited_return_type(
 						child, &child->common.arg_info[-1],
 						parent, &parent->common.arg_info[-1]);
-					if (check < 0) {
-						_inheritance_runtime_error_msg(child, parent);
+					/* TODO I don't think this is right -- what if the class now exists
+					 * but has wrong variance? */
+					if (status == INHERITANCE_UNRESOLVED) {
+						inheritance_runtime_error_msg(child, parent);
 						continue;
 					}
 				} else {
@@ -2291,12 +2292,11 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 					? &parent->common.arg_info[i]
 					: &parent->common.arg_info[parent->common.num_args];
 
-				int check = _check_inherited_parameter_type(
+				inheritance_status status = check_inherited_parameter_type(
 					child, child_arg_info,
 					parent, parent_arg_info);
-
-				if (check < 0) {
-					_inheritance_runtime_error_msg(child, parent);
+				if (status == INHERITANCE_UNRESOLVED) {
+					inheritance_runtime_error_msg(child, parent);
 					continue;
 				}
 			}
