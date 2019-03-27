@@ -478,14 +478,6 @@ static inheritance_status zend_do_perform_implementation_check(
 		}
 	}
 
-	/*
-  if (status == INHERITANCE_UNRESOLVED && CG(unverified_types)) {
-		zend_string *key = zend_string_tolower(fe->common.scope->name);
-		zend_hash_add_empty_element(CG(unverified_types), key);
-		zend_string_release(key);
-  }
-	*/
-
 	return status;
 }
 /* }}} */
@@ -651,6 +643,21 @@ static ZEND_COLD zend_string *zend_get_function_declaration(const zend_function 
 }
 /* }}} */
 
+static zend_bool lsp_fail_is_error(zend_function *child, zend_function *parent) {
+	/* Failed verification against abstract method, error. */
+	if (child->common.prototype && (child->common.prototype->common.fn_flags & ZEND_ACC_ABSTRACT)) {
+		return 1;
+	}
+	/* Failed return type verification, error. */
+	if ((parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) &&
+			!check_inherited_return_type(child, child->common.arg_info - 1, parent, parent->common.arg_info - 1)) {
+		return 1;
+	}
+
+	/* Legacy: Parameter verification failures against non-abstract methods are only warnings. */
+	return 0;
+}
+
 static zend_always_inline uint32_t func_lineno(zend_function *fn) {
 	return fn->common.type == ZEND_USER_FUNCTION ? fn->op_array.line_start : 0;
 }
@@ -737,31 +744,31 @@ static void do_inheritance_check_on_method(zend_function *child, zend_function *
 					ZEND_FN_SCOPE_NAME(child), ZSTR_VAL(child->common.function_name), zend_visibility_string(parent_flags), ZEND_FN_SCOPE_NAME(parent), (parent_flags&ZEND_ACC_PUBLIC) ? "" : " or weaker");
 			}
 
-			if (UNEXPECTED(zend_do_perform_implementation_check(child, parent)) == INHERITANCE_ERROR) {
-				int error_level;
-				const char *error_verb;
-				zend_string *method_prototype = zend_get_function_declaration(parent);
-				zend_string *child_prototype = zend_get_function_declaration(child);
-
-				if (child->common.prototype && (
-					child->common.prototype->common.fn_flags & ZEND_ACC_ABSTRACT
-				)) {
-					error_level = E_COMPILE_ERROR;
-					error_verb = "must";
-				} else if ((parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) &&
-				           !check_inherited_return_type(child, child->common.arg_info - 1, parent, parent->common.arg_info - 1)) {
-					error_level = E_COMPILE_ERROR;
-					error_verb = "must";
+			inheritance_status status = zend_do_perform_implementation_check(child, parent);
+			if (UNEXPECTED(status == INHERITANCE_ERROR)) {
+				if (lsp_fail_is_error(child, parent)) {
+					zend_string *method_prototype = zend_get_function_declaration(parent);
+					zend_string *child_prototype = zend_get_function_declaration(child);
+					zend_error_at(E_COMPILE_ERROR, NULL, func_lineno(child),
+						"Declaration of %s must be compatible with %s",
+						ZSTR_VAL(child_prototype), ZSTR_VAL(method_prototype));
+					zend_string_efree(child_prototype);
+					zend_string_efree(method_prototype);
 				} else {
-					error_level = E_WARNING;
-					error_verb = "should";
+					/* Delay this warning until runtime, to avoid duplicate warnings. */
+					status = INHERITANCE_UNRESOLVED;
 				}
-				zend_error_at(error_level, NULL, func_lineno(child),
-					"Declaration of %s %s be compatible with %s",
-					ZSTR_VAL(child_prototype), error_verb, ZSTR_VAL(method_prototype));
-				zend_string_efree(child_prototype);
-				zend_string_efree(method_prototype);
 			}
+
+			/* TODO Properly handle UNRESOLVED. */
+
+			/*
+		  if (status == INHERITANCE_UNRESOLVED && CG(unverified_types)) {
+				zend_string *key = zend_string_tolower(fe->common.scope->name);
+				zend_hash_add_empty_element(CG(unverified_types), key);
+				zend_string_release(key);
+		  }
+			*/
 		}
 	} while (0);
 }
@@ -2256,9 +2263,7 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 					inheritance_status status = check_inherited_return_type(
 						child, &child->common.arg_info[-1],
 						parent, &parent->common.arg_info[-1]);
-					/* TODO I don't think this is right -- what if the class now exists
-					 * but has wrong variance? */
-					if (status == INHERITANCE_UNRESOLVED) {
+					if (status != INHERITANCE_SUCCESS) {
 						inheritance_runtime_error_msg(child, parent);
 						continue;
 					}
@@ -2295,7 +2300,7 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 				inheritance_status status = check_inherited_parameter_type(
 					child, child_arg_info,
 					parent, parent_arg_info);
-				if (status == INHERITANCE_UNRESOLVED) {
+				if (status != INHERITANCE_SUCCESS) {
 					inheritance_runtime_error_msg(child, parent);
 					continue;
 				}

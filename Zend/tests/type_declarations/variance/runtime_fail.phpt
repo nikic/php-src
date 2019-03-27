@@ -16,5 +16,5 @@ class B extends A {
 }
 
 ?>
---EXPECT--
-Should fail.
+--EXPECTF--
+Fatal error: Declaration of B::method(): Y must be compatible with A::method(): X in %s on line 12
