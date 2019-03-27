@@ -22,5 +22,5 @@ class B extends A {
 
 ?>
 --EXPECT--
-string(1) "Y"
 string(1) "X"
+string(1) "Y"

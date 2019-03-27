@@ -760,15 +760,11 @@ static void do_inheritance_check_on_method(zend_function *child, zend_function *
 				}
 			}
 
-			/* TODO Properly handle UNRESOLVED. */
-
-			/*
-		  if (status == INHERITANCE_UNRESOLVED && CG(unverified_types)) {
-				zend_string *key = zend_string_tolower(fe->common.scope->name);
+			if (status == INHERITANCE_UNRESOLVED && CG(unverified_types)) {
+				zend_string *key = zend_string_tolower(child->common.scope->name);
 				zend_hash_add_empty_element(CG(unverified_types), key);
 				zend_string_release(key);
-		  }
-			*/
+			}
 		}
 	} while (0);
 }
@@ -2222,9 +2218,8 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 	ZEND_ASSERT(ce->ce_flags & ZEND_ACC_LINKED);
 
 	ZEND_HASH_FOREACH_PTR(&ce->function_table, child) {
-		zend_function *parent = child->common.prototype;
-
 		/* Methods without prototypes do not need checked for variance. */
+		zend_function *parent = child->common.prototype;
 		if (!parent) {
 			continue;
 		}
@@ -2236,76 +2231,8 @@ ZEND_API void zend_verify_variance(zend_class_entry *ce)
 			continue;
 		}
 
-		/* We are only willing to ignore this for internal functions because
-		 * extensions don't always define arg_info. */
-		if (missing_internal_arginfo(parent)) {
-			continue;
-		}
-
-		/* If the parenttype method is private do not enforce a signature */
-		if (!(parent->common.fn_flags & ZEND_ACC_PRIVATE)) {
-			uint32_t i, num_args;
-
-			/* Checks for constructors only if they are declared in an interface,
-			 * or explicitly marked as abstract
-			 */
-			if ((ce->constructor == child)
-			    && ((parent->common.scope->ce_flags & ZEND_ACC_INTERFACE) == 0
-			    && (parent->common.fn_flags & ZEND_ACC_ABSTRACT) == 0))
-			{
-				continue;
-			}
-
-			/* Check return type compatibility, but only if the prototype already
-			 * specifies a return type. Adding a new return type is always valid. */
-			if (parent->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-				if (child->common.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
-					inheritance_status status = check_inherited_return_type(
-						child, &child->common.arg_info[-1],
-						parent, &parent->common.arg_info[-1]);
-					if (status != INHERITANCE_SUCCESS) {
-						inheritance_runtime_error_msg(child, parent);
-						continue;
-					}
-				} else {
-						// This branch should already have been taken care of
-						continue;
-				}
-			}
-
-			if (parent->common.required_num_args < child->common.required_num_args
-			    || parent->common.num_args > child->common.num_args)
-			{
-				// This branch should already have been taken care of
-				continue;
-			}
-
-			num_args = parent->common.num_args;
-			if (parent->common.fn_flags & ZEND_ACC_VARIADIC) {
-				num_args++;
-				if (child->common.num_args >= parent->common.num_args) {
-					num_args = child->common.num_args;
-					if (child->common.fn_flags & ZEND_ACC_VARIADIC) {
-						num_args++;
-					}
-				}
-			}
-
-			for (i = 0; i < num_args; i++) {
-				zend_arg_info *child_arg_info = &child->common.arg_info[i];
-				zend_arg_info *parent_arg_info = (i < parent->common.num_args)
-					? &parent->common.arg_info[i]
-					: &parent->common.arg_info[parent->common.num_args];
-
-				inheritance_status status = check_inherited_parameter_type(
-					child, child_arg_info,
-					parent, parent_arg_info);
-				if (status != INHERITANCE_SUCCESS) {
-					inheritance_runtime_error_msg(child, parent);
-					continue;
-				}
-			}
-
+		if (zend_do_perform_implementation_check(child, parent) != INHERITANCE_SUCCESS) {
+			inheritance_runtime_error_msg(child, parent);
 		}
 	} ZEND_HASH_FOREACH_END();
 
