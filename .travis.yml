@@ -23,6 +23,7 @@ addons:
       - libsqlite3-dev
       - libwebp-dev
       - libonig-dev
+      - libgnutls-dev
 
 
 services:
