@@ -28,7 +28,6 @@ MAKE_JOBS=${MAKE_JOBS:-2}
 ./buildconf --force
 ./configure \
 --prefix="$HOME"/php-install \
-$CONFIG_QUIET \
 $DEBUG \
 $TS \
 --enable-phpdbg \
@@ -75,6 +74,7 @@ $TS \
 --enable-sysvmsg \
 --enable-zend-test \
 > "$CONFIG_LOG_FILE"
+cat config.log
 
 make "-j${MAKE_JOBS}" $MAKE_QUIET > "$MAKE_LOG_FILE"
 make install >> "$MAKE_LOG_FILE"
