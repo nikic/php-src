@@ -75,7 +75,7 @@ const struct mbfl_convert_vtbl vtbl_utf32_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_utf32_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_utf32_flush
 	NULL,
 };
 
@@ -95,7 +95,7 @@ const struct mbfl_convert_vtbl vtbl_utf32be_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_utf32be_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_utf32_flush,
 	NULL,
 };
 
@@ -115,7 +115,7 @@ const struct mbfl_convert_vtbl vtbl_utf32le_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_utf32le_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_utf32_flush
 	NULL,
 };
 
@@ -292,4 +292,20 @@ int mbfl_filt_conv_wchar_utf32le(int c, mbfl_convert_filter *filter)
 	}
 
 	return c;
+}
+
+int mbfl_filt_conv_utf32_flush(mbfl_convert_filter *filter)
+{
+	if (filter->status & 0xff) {
+		int n = (filter->cache & MBFL_WCSGROUP_MASK) | MBFL_WCSGROUP_THROUGH;
+		CK((*filter->output_function)(n, filter->data));
+	}
+
+	filter->status = 0;
+	filter->cache = 0;
+
+	if (filter->flush_function != NULL) {
+		(*filter->flush_function)(filter->data);
+	}
+	return 0;
 }

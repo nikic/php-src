@@ -45,5 +45,6 @@ int mbfl_filt_conv_utf32be_wchar(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_wchar_utf32be(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_utf32le_wchar(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_wchar_utf32le(int c, mbfl_convert_filter *filter);
+int mbfl_filt_conv_utf32_flush(mbfl_convert_filter *filter);
 
 #endif /* MBFL_MBFILTER_UTF32_H */

@@ -3986,11 +3986,8 @@ static inline int php_mb_check_encoding_impl(mbfl_buffer_converter *convd, const
 	illegalchars = mbfl_buffer_illegalchars(convd);
 
 	if (ret != NULL) {
-		if (illegalchars == 0 && string.len == result.len && memcmp(string.val, result.val, string.len) == 0) {
-			mbfl_string_clear(&result);
-			return 1;
-		}
 		mbfl_string_clear(&result);
+		return illegalchars == 0;
 	}
 	return 0;
 }

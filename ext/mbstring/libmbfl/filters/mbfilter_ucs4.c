@@ -75,7 +75,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_ucs4_flush
 	NULL,
 };
 
@@ -95,7 +95,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4be_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4be_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_ucs4_flush
 	NULL,
 };
 
@@ -115,7 +115,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4le_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4le_wchar,
-	mbfl_filt_conv_common_flush,
+	mbfl_filt_conv_ucs4_flush
 	NULL,
 };
 
@@ -278,4 +278,20 @@ int mbfl_filt_conv_wchar_ucs4le(int c, mbfl_convert_filter *filter)
 	}
 
 	return c;
+}
+
+int mbfl_filt_conv_ucs4_flush(mbfl_convert_filter *filter)
+{
+	if (filter->status & 0xff) {
+		int n = (filter->cache & MBFL_WCSGROUP_MASK) | MBFL_WCSGROUP_THROUGH;
+		CK((*filter->output_function)(n, filter->data));
+	}
+
+	filter->status = 0;
+	filter->cache = 0;
+
+	if (filter->flush_function != NULL) {
+		(*filter->flush_function)(filter->data);
+	}
+	return 0;
 }
