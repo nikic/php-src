@@ -45,5 +45,6 @@ int mbfl_filt_conv_ucs4be_wchar(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_wchar_ucs4be(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_ucs4le_wchar(int c, mbfl_convert_filter *filter);
 int mbfl_filt_conv_wchar_ucs4le(int c, mbfl_convert_filter *filter);
+int mbfl_filt_conv_ucs4_flush(mbfl_convert_filter *filter);
 
 #endif /* MBFL_MBFILTER_UCS4_H */
