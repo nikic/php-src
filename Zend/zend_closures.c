@@ -357,7 +357,8 @@ static ZEND_COLD zend_function *zend_closure_get_constructor(zend_object *object
 
 static int zend_closure_compare(zval *o1, zval *o2) /* {{{ */
 {
-	return (Z_TYPE_P(o1) != Z_TYPE_P(o2) || Z_OBJ_P(o1) != Z_OBJ_P(o2));
+	ZEND_COMPARE_OBJECTS_FALLBACK(o1, o2);
+	return Z_OBJ_P(o1) != Z_OBJ_P(o2);
 }
 /* }}} */
 

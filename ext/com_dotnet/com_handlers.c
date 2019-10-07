@@ -422,9 +422,7 @@ static int com_objects_compare(zval *object1, zval *object2)
 	 * So, we have this declaration here to fix it */
 	STDAPI VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, DWORD flags);
 
-	if (Z_TYPE_P(object1) != Z_TYPE_P(object2)) {
-		return 1; /* object and non-object */
-	}
+	ZEND_COMPARE_OBJECTS_FALLBACK(object1, object2);
 
 	obja = CDNO_FETCH(object1);
 	objb = CDNO_FETCH(object2);

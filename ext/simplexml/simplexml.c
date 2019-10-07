@@ -1286,9 +1286,7 @@ static int sxe_objects_compare(zval *object1, zval *object2) /* {{{ */
 	php_sxe_object *sxe1;
 	php_sxe_object *sxe2;
 
-	if (Z_TYPE_P(object1) != Z_TYPE_P(object2)) {
-		return 1; /* object and non-object */
-	}
+	ZEND_COMPARE_OBJECTS_FALLBACK(object1, object2);
 
 	sxe1 = Z_SXEOBJ_P(object1);
 	sxe2 = Z_SXEOBJ_P(object2);

@@ -1977,23 +1977,6 @@ ZEND_API int ZEND_FASTCALL numeric_compare_function(zval *op1, zval *op2) /* {{{
 }
 /* }}} */
 
-static zend_always_inline void zend_free_obj_get_result(zval *op) /* {{{ */
-{
-	ZEND_ASSERT(!Z_REFCOUNTED_P(op) || Z_REFCOUNT_P(op) != 0);
-	zval_ptr_dtor(op);
-}
-/* }}} */
-
-static void ZEND_FASTCALL convert_compare_result_to_long(zval *result) /* {{{ */
-{
-	if (Z_TYPE_P(result) == IS_DOUBLE) {
-		ZVAL_LONG(result, ZEND_NORMALIZE_BOOL(Z_DVAL_P(result)));
-	} else {
-		convert_to_long(result);
-	}
-}
-/* }}} */
-
 ZEND_API int ZEND_FASTCALL compare_function(zval *result, zval *op1, zval *op2) /* {{{ */
 {
 	ZVAL_LONG(result, zend_compare(op1, op2));
@@ -2003,9 +1986,8 @@ ZEND_API int ZEND_FASTCALL compare_function(zval *result, zval *op1, zval *op2) 
 
 ZEND_API int ZEND_FASTCALL zend_compare(zval *op1, zval *op2) /* {{{ */
 {
-	int ret;
 	int converted = 0;
-	zval op1_copy, op2_copy, tmp_free;
+	zval op1_copy, op2_copy;
 
 	while (1) {
 		switch (TYPE_PAIR(Z_TYPE_P(op1), Z_TYPE_P(op2))) {
@@ -2072,38 +2054,12 @@ ZEND_API int ZEND_FASTCALL zend_compare(zval *op1, zval *op2) /* {{{ */
 				 && Z_TYPE_P(op2) == IS_OBJECT
 				 && Z_OBJ_P(op1) == Z_OBJ_P(op2)) {
 					return 0;
-				} else if (Z_TYPE_P(op1) == IS_OBJECT && Z_OBJ_HANDLER_P(op1, compare)) {
+				} else if (Z_TYPE_P(op1) == IS_OBJECT) {
 					return Z_OBJ_HANDLER_P(op1, compare)(op1, op2);
-				} else if (Z_TYPE_P(op2) == IS_OBJECT && Z_OBJ_HANDLER_P(op2, compare)) {
+				} else if (Z_TYPE_P(op2) == IS_OBJECT) {
 					return Z_OBJ_HANDLER_P(op2, compare)(op1, op2);
 				}
 
-				if (Z_TYPE_P(op1) == IS_OBJECT) {
-					if (Z_TYPE_P(op2) != IS_OBJECT && Z_OBJ_HT_P(op1)->cast_object) {
-						ZVAL_UNDEF(&tmp_free);
-						if (Z_OBJ_HT_P(op1)->cast_object(Z_OBJ_P(op1), &tmp_free, ((Z_TYPE_P(op2) == IS_FALSE || Z_TYPE_P(op2) == IS_TRUE) ? _IS_BOOL : Z_TYPE_P(op2))) == FAILURE) {
-							zend_free_obj_get_result(&tmp_free);
-							return 1;
-						}
-						ret = zend_compare(&tmp_free, op2);
-						zend_free_obj_get_result(&tmp_free);
-						return ret;
-					}
-				}
-				if (Z_TYPE_P(op2) == IS_OBJECT) {
-					if (Z_TYPE_P(op1) != IS_OBJECT && Z_OBJ_HT_P(op2)->cast_object) {
-						ZVAL_UNDEF(&tmp_free);
-						if (Z_OBJ_HT_P(op2)->cast_object(Z_OBJ_P(op2), &tmp_free, ((Z_TYPE_P(op1) == IS_FALSE || Z_TYPE_P(op1) == IS_TRUE) ? _IS_BOOL : Z_TYPE_P(op1))) == FAILURE) {
-							zend_free_obj_get_result(&tmp_free);
-							return -1;
-						}
-						ret = zend_compare(op1, &tmp_free);
-						zend_free_obj_get_result(&tmp_free);
-						return ret;
-					} else if (Z_TYPE_P(op1) == IS_OBJECT) {
-						return 1;
-					}
-				}
 				if (!converted) {
 					if (Z_TYPE_P(op1) < IS_TRUE) {
 						return zval_is_true(op2) ? -1 : 0;

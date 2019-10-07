@@ -1547,7 +1547,30 @@ ZEND_API int zend_std_compare_objects(zval *o1, zval *o2) /* {{{ */
 	zend_object *zobj1, *zobj2;
 
 	if (Z_TYPE_P(o1) != Z_TYPE_P(o2)) {
-		return 1; /* object and non-object */
+		/* Object and non-object */
+		zval casted;
+		if (Z_TYPE_P(o1) == IS_OBJECT) {
+			ZEND_ASSERT(Z_TYPE_P(o2) != IS_OBJECT);
+			if (Z_OBJ_HT_P(o1)->cast_object) {
+				if (Z_OBJ_HT_P(o1)->cast_object(Z_OBJ_P(o1), &casted, ((Z_TYPE_P(o2) == IS_FALSE || Z_TYPE_P(o2) == IS_TRUE) ? _IS_BOOL : Z_TYPE_P(o2))) == FAILURE) {
+					return 1;
+				}
+				int ret = zend_compare(&casted, o2);
+				zval_ptr_dtor(&casted);
+				return ret;
+			}
+		} else {
+			ZEND_ASSERT(Z_TYPE_P(o2) == IS_OBJECT);
+			if (Z_OBJ_HT_P(o2)->cast_object) {
+				if (Z_OBJ_HT_P(o2)->cast_object(Z_OBJ_P(o2), &casted, ((Z_TYPE_P(o1) == IS_FALSE || Z_TYPE_P(o1) == IS_TRUE) ? _IS_BOOL : Z_TYPE_P(o1))) == FAILURE) {
+					return -1;
+				}
+				int ret = zend_compare(o1, &casted);
+				zval_ptr_dtor(&casted);
+				return ret;
+			}
+		}
+		return 1;
 	}
 
 	zobj1 = Z_OBJ_P(o1);

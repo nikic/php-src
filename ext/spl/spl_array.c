@@ -944,9 +944,7 @@ static int spl_array_compare_objects(zval *o1, zval *o2) /* {{{ */
 						*intern2;
 	int					result	= 0;
 
-	if (Z_TYPE_P(o1) != Z_TYPE_P(o2)) {
-		return 1; /* object and non-object */
-	}
+	ZEND_COMPARE_OBJECTS_FALLBACK(o1, o2);
 
 	intern1	= Z_SPLARRAY_P(o1);
 	intern2	= Z_SPLARRAY_P(o2);

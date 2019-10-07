@@ -319,6 +319,7 @@ static zend_string* saproxy_class_name_get(const zend_object *object)
 
 static int saproxy_objects_compare(zval *object1, zval *object2)
 {
+	ZEND_COMPARE_OBJECTS_FALLBACK(object1, object2);
 	return -1;
 }
 

@@ -1893,9 +1893,7 @@ static int date_object_compare_date(zval *d1, zval *d2) /* {{{ */
 	php_date_obj *o1;
 	php_date_obj *o2;
 
-	if (Z_TYPE_P(d1) != Z_TYPE_P(d2)) {
-		return 1; /* object and non-object */
-	}
+	ZEND_COMPARE_OBJECTS_FALLBACK(d1, d2);
 
 	o1 = Z_PHPDATE_P(d1);
 	o2 = Z_PHPDATE_P(d2);
@@ -3815,6 +3813,7 @@ static int date_interval_initialize(timelib_rel_time **rt, /*const*/ char *forma
 } /* }}} */
 
 static int date_interval_compare_objects(zval *o1, zval *o2) {
+	ZEND_COMPARE_OBJECTS_FALLBACK(o1, o2);
 	/* There is no well defined way to compare intervals like P1M and P30D, which may compare
 	 * smaller, equal or greater depending on the point in time at which the interval starts. As
 	 * such, we treat DateInterval objects are non-comparable and emit a warning. */

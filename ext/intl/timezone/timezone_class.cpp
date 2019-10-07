@@ -269,9 +269,7 @@ static int TimeZone_compare_objects(zval *object1, zval *object2)
 	TimeZone_object		*to1,
 						*to2;
 
-	if (Z_TYPE_P(object1) != Z_TYPE_P(object2)) {
-		return 1; /* object and non-object */
-	}
+	ZEND_COMPARE_OBJECTS_FALLBACK(object1, object2);
 
 	to1 = Z_INTL_TIMEZONE_P(object1);
 	to2 = Z_INTL_TIMEZONE_P(object2);

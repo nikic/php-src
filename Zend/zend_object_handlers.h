@@ -166,7 +166,7 @@ struct _zend_object_handlers {
 	zend_object_get_closure_t				get_closure;          /* optional */
 	zend_object_get_gc_t					get_gc;               /* required */
 	zend_object_do_operation_t				do_operation;         /* optional */
-	zend_object_compare_t					compare;              /* optional */
+	zend_object_compare_t					compare;              /* required */
 	zend_object_get_properties_for_t		get_properties_for;   /* optional */
 };
 
@@ -238,6 +238,16 @@ ZEND_API HashTable *zend_get_properties_for(zval *obj, zend_prop_purpose purpose
 			efree(func); \
 		} \
 	} while (0)
+
+/* Fallback to default comparison implementation if the arguments aren't both objects
+ * and have the same compare() handler. You'll likely want to use this unless you
+ * explicitly wish to support comparisons between objects and non-objects. */
+#define ZEND_COMPARE_OBJECTS_FALLBACK(op1, op2) \
+	if (Z_TYPE_P(op1) != IS_OBJECT || \
+			Z_TYPE_P(op2) != IS_OBJECT || \
+			Z_OBJ_HT_P(op1)->compare != Z_OBJ_HT_P(op2)->compare) { \
+		return zend_std_compare_objects(op1, op2); \
+	}
 
 END_EXTERN_C()
 
