@@ -944,6 +944,10 @@ static int spl_array_compare_objects(zval *o1, zval *o2) /* {{{ */
 						*intern2;
 	int					result	= 0;
 
+	if (Z_TYPE_P(o1) != Z_TYPE_P(o2)) {
+		return 1; /* object and non-object */
+	}
+
 	intern1	= Z_SPLARRAY_P(o1);
 	intern2	= Z_SPLARRAY_P(o2);
 	ht1		= spl_array_get_hash_table(intern1);
@@ -2039,7 +2043,7 @@ PHP_MINIT_FUNCTION(spl_array)
 	spl_handler_ArrayObject.has_property = spl_array_has_property;
 	spl_handler_ArrayObject.unset_property = spl_array_unset_property;
 
-	spl_handler_ArrayObject.compare_objects = spl_array_compare_objects;
+	spl_handler_ArrayObject.compare = spl_array_compare_objects;
 	spl_handler_ArrayObject.dtor_obj = zend_objects_destroy_object;
 	spl_handler_ArrayObject.free_obj = spl_array_object_free_storage;
 

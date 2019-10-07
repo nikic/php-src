@@ -422,6 +422,10 @@ static int com_objects_compare(zval *object1, zval *object2)
 	 * So, we have this declaration here to fix it */
 	STDAPI VarCmp(LPVARIANT pvarLeft, LPVARIANT pvarRight, LCID lcid, DWORD flags);
 
+	if (Z_TYPE_P(object1) != Z_TYPE_P(object2)) {
+		return 1; /* object and non-object */
+	}
+
 	obja = CDNO_FETCH(object1);
 	objb = CDNO_FETCH(object2);
 
@@ -538,12 +542,14 @@ zend_object_handlers php_com_object_handlers = {
 	com_method_get,
 	com_constructor_get,
 	com_class_name_get,
-	com_objects_compare,
 	com_object_cast,
 	com_object_count,
 	NULL,									/* get_debug_info */
 	NULL,									/* get_closure */
 	zend_std_get_gc,						/* get_gc */
+	NULL,									/* do_operation */
+	com_objects_compare,					/* compare */
+	NULL,									/* get_properties_for */
 };
 
 void php_com_object_enable_event_sink(php_com_dotnet_object *obj, int enable)

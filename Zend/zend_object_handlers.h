@@ -124,7 +124,6 @@ typedef zend_object* (*zend_object_clone_obj_t)(zend_object *object);
 typedef zend_string *(*zend_object_get_class_name_t)(const zend_object *object);
 
 typedef int (*zend_object_compare_t)(zval *object1, zval *object2);
-typedef int (*zend_object_compare_zvals_t)(zval *result, zval *op1, zval *op2);
 
 /* Cast an object to some other type.
  * readobj and retval must point to distinct zvals.
@@ -161,14 +160,13 @@ struct _zend_object_handlers {
 	zend_object_get_method_t				get_method;           /* required */
 	zend_object_get_constructor_t			get_constructor;      /* required */
 	zend_object_get_class_name_t			get_class_name;       /* required */
-	zend_object_compare_t					compare_objects;      /* optional */
 	zend_object_cast_t						cast_object;          /* optional */
 	zend_object_count_elements_t			count_elements;       /* optional */
 	zend_object_get_debug_info_t			get_debug_info;       /* optional */
 	zend_object_get_closure_t				get_closure;          /* optional */
 	zend_object_get_gc_t					get_gc;               /* required */
 	zend_object_do_operation_t				do_operation;         /* optional */
-	zend_object_compare_zvals_t				compare;              /* optional */
+	zend_object_compare_t					compare;              /* optional */
 	zend_object_get_properties_for_t		get_properties_for;   /* optional */
 };
 

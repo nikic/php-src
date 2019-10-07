@@ -578,6 +578,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_shift_right_
 
 static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_equal_helper_SPEC(zval *op_1, zval *op_2 ZEND_OPCODE_HANDLER_ARGS_DC)
 {
+	int ret;
 	USE_OPLINE
 
 	SAVE_OPLINE();
@@ -587,7 +588,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_equal_hel
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	ret = zend_compare(op_1, op_2);
 	if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_1);
 	}
@@ -597,7 +598,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_equal_hel
 	if (UNEXPECTED(EG(exception))) {
 		HANDLE_EXCEPTION();
 	}
-	if (Z_LVAL_P(EX_VAR(opline->result.var)) == 0) {
+	if (ret == 0) {
 		ZEND_VM_SMART_BRANCH_TRUE();
 		ZVAL_TRUE(EX_VAR(opline->result.var));
 		ZEND_VM_NEXT_OPCODE();
@@ -610,6 +611,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_equal_hel
 
 static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_not_equal_helper_SPEC(zval *op_1, zval *op_2 ZEND_OPCODE_HANDLER_ARGS_DC)
 {
+	int ret;
 	USE_OPLINE
 
 	SAVE_OPLINE();
@@ -619,7 +621,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_not_equal
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	ret = zend_compare(op_1, op_2);
 	if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_1);
 	}
@@ -629,7 +631,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_not_equal
 	if (UNEXPECTED(EG(exception))) {
 		HANDLE_EXCEPTION();
 	}
-	if (Z_LVAL_P(EX_VAR(opline->result.var)) != 0) {
+	if (ret != 0) {
 		ZEND_VM_SMART_BRANCH_TRUE();
 		ZVAL_TRUE(EX_VAR(opline->result.var));
 		ZEND_VM_NEXT_OPCODE();
@@ -642,6 +644,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_not_equal
 
 static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_helper_SPEC(zval *op_1, zval *op_2 ZEND_OPCODE_HANDLER_ARGS_DC)
 {
+	int ret;
 	USE_OPLINE
 
 	SAVE_OPLINE();
@@ -651,7 +654,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_h
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	ret = zend_compare(op_1, op_2);
 	if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_1);
 	}
@@ -661,7 +664,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_h
 	if (UNEXPECTED(EG(exception))) {
 		HANDLE_EXCEPTION();
 	}
-	if (Z_LVAL_P(EX_VAR(opline->result.var)) < 0) {
+	if (ret < 0) {
 		ZEND_VM_SMART_BRANCH_TRUE();
 		ZVAL_TRUE(EX_VAR(opline->result.var));
 		ZEND_VM_NEXT_OPCODE();
@@ -674,6 +677,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_h
 
 static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_or_equal_helper_SPEC(zval *op_1, zval *op_2 ZEND_OPCODE_HANDLER_ARGS_DC)
 {
+	int ret;
 	USE_OPLINE
 
 	SAVE_OPLINE();
@@ -683,7 +687,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_o
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	ret = zend_compare(op_1, op_2);
 	if (opline->op1_type & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_1);
 	}
@@ -693,7 +697,7 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_is_smaller_o
 	if (UNEXPECTED(EG(exception))) {
 		HANDLE_EXCEPTION();
 	}
-	if (Z_LVAL_P(EX_VAR(opline->result.var)) <= 0) {
+	if (ret <= 0) {
 		ZEND_VM_SMART_BRANCH_TRUE();
 		ZVAL_TRUE(EX_VAR(opline->result.var));
 		ZEND_VM_NEXT_OPCODE();
@@ -2119,6 +2123,7 @@ send_array:
 
 static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_case_helper_SPEC(zval *op_1, zval *op_2 ZEND_OPCODE_HANDLER_ARGS_DC)
 {
+	int ret;
 	USE_OPLINE
 
 	SAVE_OPLINE();
@@ -2128,14 +2133,14 @@ static zend_never_inline ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL zend_case_helper_
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	ret = zend_compare(op_1, op_2);
 	if (opline->op2_type & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_2);
 	}
 	if (UNEXPECTED(EG(exception))) {
 		HANDLE_EXCEPTION();
 	}
-	if (Z_LVAL_P(EX_VAR(opline->result.var)) == 0) {
+	if (ret == 0) {
 		ZEND_VM_SMART_BRANCH_TRUE();
 		ZVAL_TRUE(EX_VAR(opline->result.var));
 		ZEND_VM_NEXT_OPCODE();
@@ -6612,13 +6617,12 @@ static ZEND_VM_COLD ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_IN_ARRAY_SPEC_CON
 		result = zend_hash_find_ex(ht, ZSTR_EMPTY_ALLOC(), 1);
 	} else {
 		zend_string *key;
-		zval key_tmp, result_tmp, *val;
+		zval key_tmp, *val;
 
 		result = NULL;
 		ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, val) {
 			ZVAL_STR(&key_tmp, key);
-			compare_function(&result_tmp, op1, &key_tmp);
-			if (Z_LVAL(result_tmp) == 0) {
+			if (zend_compare(op1, &key_tmp) == 0) {
 				result = val;
 				break;
 			}
@@ -18910,13 +18914,12 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_IN_ARRAY_SPEC_TMP_CONST_HANDLE
 		result = zend_hash_find_ex(ht, ZSTR_EMPTY_ALLOC(), 1);
 	} else {
 		zend_string *key;
-		zval key_tmp, result_tmp, *val;
+		zval key_tmp, *val;
 
 		result = NULL;
 		ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, val) {
 			ZVAL_STR(&key_tmp, key);
-			compare_function(&result_tmp, op1, &key_tmp);
-			if (Z_LVAL(result_tmp) == 0) {
+			if (zend_compare(op1, &key_tmp) == 0) {
 				result = val;
 				break;
 			}
@@ -24164,13 +24167,12 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_IN_ARRAY_SPEC_VAR_CONST_HANDLE
 		result = zend_hash_find_ex(ht, ZSTR_EMPTY_ALLOC(), 1);
 	} else {
 		zend_string *key;
-		zval key_tmp, result_tmp, *val;
+		zval key_tmp, *val;
 
 		result = NULL;
 		ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, val) {
 			ZVAL_STR(&key_tmp, key);
-			compare_function(&result_tmp, op1, &key_tmp);
-			if (Z_LVAL(result_tmp) == 0) {
+			if (zend_compare(op1, &key_tmp) == 0) {
 				result = val;
 				break;
 			}
@@ -41956,13 +41958,12 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_IN_ARRAY_SPEC_CV_CONST_HANDLER
 		result = zend_hash_find_ex(ht, ZSTR_EMPTY_ALLOC(), 1);
 	} else {
 		zend_string *key;
-		zval key_tmp, result_tmp, *val;
+		zval key_tmp, *val;
 
 		result = NULL;
 		ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, val) {
 			ZVAL_STR(&key_tmp, key);
-			compare_function(&result_tmp, op1, &key_tmp);
-			if (Z_LVAL(result_tmp) == 0) {
+			if (zend_compare(op1, &key_tmp) == 0) {
 				result = val;
 				break;
 			}

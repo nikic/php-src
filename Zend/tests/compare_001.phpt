@@ -94,15 +94,9 @@ int(1) != string(3) "2.5"
 int(1) != NULL
 int(1) == bool(true)
 int(1) != bool(false)
-int(1)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- == object(stdClass)#1 (0) {}
-int(1)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- == object(stdClass)#2 (0) {}
-int(1)
-Notice: Object of class test could not be converted to int in %s on line %d
- == object(test)#3 (0) {}
+int(1) != object(stdClass)#1 (0) {}
+int(1) != object(stdClass)#2 (0) {}
+int(1) != object(test)#3 (0) {}
 int(1) != array(0) {}
 int(1) != int(-2147483648)
 int(1) != string(11) "-2147483648"
@@ -117,15 +111,9 @@ float(2.5) == string(3) "2.5"
 float(2.5) != NULL
 float(2.5) == bool(true)
 float(2.5) != bool(false)
-float(2.5)
-Notice: Object of class stdClass could not be converted to float in %s on line %d
- != object(stdClass)#1 (0) {}
-float(2.5)
-Notice: Object of class stdClass could not be converted to float in %s on line %d
- != object(stdClass)#2 (0) {}
-float(2.5)
-Notice: Object of class test could not be converted to float in %s on line %d
- != object(test)#3 (0) {}
+float(2.5) != object(stdClass)#1 (0) {}
+float(2.5) != object(stdClass)#2 (0) {}
+float(2.5) != object(test)#3 (0) {}
 float(2.5) != array(0) {}
 float(2.5) != int(-2147483648)
 float(2.5) != string(11) "-2147483648"
@@ -140,15 +128,9 @@ int(0) != string(3) "2.5"
 int(0) == NULL
 int(0) != bool(true)
 int(0) == bool(false)
-int(0)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != object(stdClass)#1 (0) {}
-int(0)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != object(stdClass)#2 (0) {}
-int(0)
-Notice: Object of class test could not be converted to int in %s on line %d
- != object(test)#3 (0) {}
+int(0) != object(stdClass)#1 (0) {}
+int(0) != object(stdClass)#2 (0) {}
+int(0) != object(test)#3 (0) {}
 int(0) != array(0) {}
 int(0) != int(-2147483648)
 int(0) != string(11) "-2147483648"
@@ -256,15 +238,9 @@ bool(false) != int(-2147483648)
 bool(false) != string(11) "-2147483648"
 object(stdClass)#1 (0) {} != array(3) {  [0]=>  int(1)  [1]=>  int(2)  [2]=>  int(3)}
 object(stdClass)#1 (0) {} != string(0) ""
-object(stdClass)#1 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- == int(1)
-object(stdClass)#1 (0) {}
-Notice: Object of class stdClass could not be converted to float in %s on line %d
- != float(2.5)
-object(stdClass)#1 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != int(0)
+object(stdClass)#1 (0) {} != int(1)
+object(stdClass)#1 (0) {} != float(2.5)
+object(stdClass)#1 (0) {} != int(0)
 object(stdClass)#1 (0) {} != string(6) "string"
 object(stdClass)#1 (0) {} != string(3) "123"
 object(stdClass)#1 (0) {} != string(3) "2.5"
@@ -275,21 +251,13 @@ object(stdClass)#1 (0) {} == object(stdClass)#1 (0) {}
 object(stdClass)#1 (0) {} == object(stdClass)#2 (0) {}
 object(stdClass)#1 (0) {} != object(test)#3 (0) {}
 object(stdClass)#1 (0) {} != array(0) {}
-object(stdClass)#1 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != int(-2147483648)
+object(stdClass)#1 (0) {} != int(-2147483648)
 object(stdClass)#1 (0) {} != string(11) "-2147483648"
 object(stdClass)#2 (0) {} != array(3) {  [0]=>  int(1)  [1]=>  int(2)  [2]=>  int(3)}
 object(stdClass)#2 (0) {} != string(0) ""
-object(stdClass)#2 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- == int(1)
-object(stdClass)#2 (0) {}
-Notice: Object of class stdClass could not be converted to float in %s on line %d
- != float(2.5)
-object(stdClass)#2 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != int(0)
+object(stdClass)#2 (0) {} != int(1)
+object(stdClass)#2 (0) {} != float(2.5)
+object(stdClass)#2 (0) {} != int(0)
 object(stdClass)#2 (0) {} != string(6) "string"
 object(stdClass)#2 (0) {} != string(3) "123"
 object(stdClass)#2 (0) {} != string(3) "2.5"
@@ -300,21 +268,13 @@ object(stdClass)#2 (0) {} == object(stdClass)#1 (0) {}
 object(stdClass)#2 (0) {} == object(stdClass)#2 (0) {}
 object(stdClass)#2 (0) {} != object(test)#3 (0) {}
 object(stdClass)#2 (0) {} != array(0) {}
-object(stdClass)#2 (0) {}
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != int(-2147483648)
+object(stdClass)#2 (0) {} != int(-2147483648)
 object(stdClass)#2 (0) {} != string(11) "-2147483648"
 object(test)#3 (0) {} != array(3) {  [0]=>  int(1)  [1]=>  int(2)  [2]=>  int(3)}
 object(test)#3 (0) {} != string(0) ""
-object(test)#3 (0) {}
-Notice: Object of class test could not be converted to int in %s on line %d
- == int(1)
-object(test)#3 (0) {}
-Notice: Object of class test could not be converted to float in %s on line %d
- != float(2.5)
-object(test)#3 (0) {}
-Notice: Object of class test could not be converted to int in %s on line %d
- != int(0)
+object(test)#3 (0) {} != int(1)
+object(test)#3 (0) {} != float(2.5)
+object(test)#3 (0) {} != int(0)
 object(test)#3 (0) {} != string(6) "string"
 object(test)#3 (0) {} != string(3) "123"
 object(test)#3 (0) {} != string(3) "2.5"
@@ -325,9 +285,7 @@ object(test)#3 (0) {} != object(stdClass)#1 (0) {}
 object(test)#3 (0) {} != object(stdClass)#2 (0) {}
 object(test)#3 (0) {} == object(test)#3 (0) {}
 object(test)#3 (0) {} != array(0) {}
-object(test)#3 (0) {}
-Notice: Object of class test could not be converted to int in %s on line %d
- != int(-2147483648)
+object(test)#3 (0) {} != int(-2147483648)
 object(test)#3 (0) {} != string(11) "-2147483648"
 array(0) {} != array(3) {  [0]=>  int(1)  [1]=>  int(2)  [2]=>  int(3)}
 array(0) {} != string(0) ""
@@ -357,15 +315,9 @@ int(-2147483648) != string(3) "2.5"
 int(-2147483648) != NULL
 int(-2147483648) == bool(true)
 int(-2147483648) != bool(false)
-int(-2147483648)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != object(stdClass)#1 (0) {}
-int(-2147483648)
-Notice: Object of class stdClass could not be converted to int in %s on line %d
- != object(stdClass)#2 (0) {}
-int(-2147483648)
-Notice: Object of class test could not be converted to int in %s on line %d
- != object(test)#3 (0) {}
+int(-2147483648) != object(stdClass)#1 (0) {}
+int(-2147483648) != object(stdClass)#2 (0) {}
+int(-2147483648) != object(test)#3 (0) {}
 int(-2147483648) != array(0) {}
 int(-2147483648) == int(-2147483648)
 int(-2147483648) == string(11) "-2147483648"
