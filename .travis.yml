@@ -83,7 +83,7 @@ before_script:
     # Compile PHP
     #- travis_wait ./travis/compile.sh
     # Setup Extensions
-    - mysql -uroot -e 'CREATE USER "travis" IDENTIFIED BY ""'
+    - sudo mysql -e 'CREATE USER "travis" IDENTIFIED BY ""'
     - ./travis/setup-mysql.sh
     #- ./travis/setup-pgsql.sh
 
