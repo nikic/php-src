@@ -81,10 +81,8 @@ before_script:
     # Enable IPv6
     - sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
     # Compile PHP
-    #- travis_wait ./travis/compile.sh
+    - travis_wait ./travis/compile.sh
     # Setup Extensions
-    - sudo mysql -e 'CREATE USER "travis"@"localhost" IDENTIFIED BY ""'
-    - sudo mysql -e 'GRANT ALL PRIVILEGES ON *.* TO "travis"@"localhost"'
     - ./travis/setup-mysql.sh
     #- ./travis/setup-pgsql.sh
 
