@@ -81,9 +81,9 @@ before_script:
     # Enable IPv6
     - sudo sh -c 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
     # Compile PHP
-    - travis_wait ./travis/compile.sh
+    #- travis_wait ./travis/compile.sh
     # Setup Extensions
-    #- ./travis/setup-mysql.sh
+    - ./travis/setup-mysql.sh
     #- ./travis/setup-pgsql.sh
 
 # Run PHPs run-tests.php
