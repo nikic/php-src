@@ -23,7 +23,7 @@ else
 	MAKE_QUIET=""
 fi
 
-MAKE_JOBS=${MAKE_JOBS:-$(nproc)}
+MAKE_JOBS=${MAKE_JOBS:-2}
 
 ./buildconf --force
 ./configure \
