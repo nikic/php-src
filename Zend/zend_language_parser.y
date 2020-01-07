@@ -42,7 +42,8 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 
 %}
 
-%define api.pure full
+%glr-parser
+%define api.pure true
 %expect 0
 
 %code requires {
