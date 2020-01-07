@@ -239,11 +239,11 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 %type <ast> static_var class_statement trait_adaptation trait_precedence trait_alias
 %type <ast> absolute_trait_method_reference trait_method_reference property echo_expr
 %type <ast> new_expr anonymous_class class_name class_name_reference simple_variable
-%type <ast> internal_functions_in_yacc
+%type <ast> internal_functions_in_yacc simple_class_name generic_arg_list
 %type <ast> exit_expr scalar backticks_expr lexical_var function_call member_name property_name
-%type <ast> variable_class_name dereferencable_scalar constant dereferencable
-%type <ast> callable_expr callable_variable static_member new_variable
-%type <ast> encaps_var encaps_var_offset isset_variables
+%type <ast> variable_class_name dereferencable_scalar constant dereferencable generic_param
+%type <ast> callable_expr callable_variable static_member new_variable full_generic_param_list
+%type <ast> encaps_var encaps_var_offset isset_variables generic_param_list
 %type <ast> top_statement_list use_declarations const_list inner_statement_list if_stmt
 %type <ast> alt_if_stmt for_exprs switch_case_list global_var_list static_var_list
 %type <ast> echo_expr_list unset_variables catch_name_list catch_list parameter_list class_statement_list
@@ -259,7 +259,7 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 
 %type <num> returns_ref function fn is_reference is_variadic variable_modifiers
 %type <num> method_modifiers non_empty_member_modifiers member_modifier
-%type <num> class_modifiers class_modifier use_type backup_fn_flags
+%type <num> class_modifiers class_modifier use_type backup_fn_flags class_keyword
 
 %type <ptr> backup_lex_pos
 %type <str> backup_doc_comment
@@ -504,10 +504,40 @@ is_variadic:
 	|	T_ELLIPSIS  { $$ = ZEND_PARAM_VARIADIC; }
 ;
 
+generic_param:
+		T_STRING { $$ = $1; }
+	|	T_STRING ':' type_expr { (void) $1; (void) $3; $$ = NULL; }
+;
+
+generic_param_list:
+		generic_param { (void) $1; $$ = NULL; }
+	|	generic_param_list ',' generic_param { (void) $1; (void) $3; $$ = NULL; }
+;
+
+full_generic_param_list:
+		'{' generic_param_list '}' { (void) $2; $$ = NULL; }
+;
+
+class_keyword:
+		T_CLASS { $<num>$ = CG(zend_lineno); }
+;
+
 class_declaration_statement:
-		class_modifiers T_CLASS { $<num>$ = CG(zend_lineno); }
-		T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
-			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>3, $7, zend_ast_get_str($4), $5, $6, $9, NULL); }
+		class_modifiers class_keyword
+		T_STRING '{' backup_doc_comment class_statement_list '}'
+			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>2, $5, zend_ast_get_str($3), NULL, NULL, $6, NULL); }
+	|	class_modifiers class_keyword
+		T_STRING T_IMPLEMENTS name_list '{' backup_doc_comment class_statement_list '}'
+			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>2, $7, zend_ast_get_str($3), NULL, $5, $8, NULL); }
+	|	class_modifiers class_keyword
+		T_STRING T_EXTENDS name '{' backup_doc_comment class_statement_list '}'
+			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>2, $7, zend_ast_get_str($3), $5, NULL, $8, NULL); }
+	|	class_modifiers class_keyword
+		T_STRING T_EXTENDS name T_IMPLEMENTS name_list '{' backup_doc_comment class_statement_list '}'
+			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>2, $9, zend_ast_get_str($3), $5, $7, $10, NULL); }
+	|	class_modifiers class_keyword
+		T_STRING full_generic_param_list extends_from implements_list backup_doc_comment '{' class_statement_list '}'
+			{ (void) $4; $$ = zend_ast_create_decl(ZEND_AST_CLASS, $1, $<num>2, $7, zend_ast_get_str($3), $5, $6, $9, NULL); }
 	|	T_CLASS { $<num>$ = CG(zend_lineno); }
 		T_STRING extends_from implements_list backup_doc_comment '{' class_statement_list '}'
 			{ $$ = zend_ast_create_decl(ZEND_AST_CLASS, 0, $<num>2, $6, zend_ast_get_str($3), $4, $5, $8, NULL); }
@@ -1067,11 +1097,22 @@ function_call:
 			{ $$ = zend_ast_create(ZEND_AST_CALL, $1, $2); }
 ;
 
-class_name:
+simple_class_name:
 		T_STATIC
 			{ zval zv; ZVAL_INTERNED_STR(&zv, ZSTR_KNOWN(ZEND_STR_STATIC));
 			  $$ = zend_ast_create_zval_ex(&zv, ZEND_NAME_NOT_FQ); }
 	|	name { $$ = $1; }
+;
+
+class_name:
+		simple_class_name { $$ = $1; }
+	|	simple_class_name '{' generic_arg_list '}'
+			{ (void) $3; $$ = $1; }
+;
+
+generic_arg_list:
+		type_expr { (void) $1; $$ = NULL; }
+	|	generic_arg_list ',' type_expr { (void) $1; (void) $3;  $$ = NULL; }
 ;
 
 class_name_reference:
