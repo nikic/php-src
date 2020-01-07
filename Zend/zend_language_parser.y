@@ -42,7 +42,8 @@ static YYSIZE_T zend_yytnamerr(char*, const char*);
 
 %}
 
-%define api.pure full
+%glr-parser
+%define api.pure true
 %expect 0
 
 %code requires {
@@ -1355,7 +1356,7 @@ static YYSIZE_T zend_yytnamerr(char *yyres, const char *yystr)
 
 		str = LANG_SCNG(yy_text);
 		end = memchr(str, '\n', LANG_SCNG(yy_leng));
-		yystr_len = (unsigned int)yystrlen(yystr);
+		yystr_len = (unsigned int)strlen(yystr);
 
 		if ((tok1 = memchr(yystr, '(', yystr_len)) != NULL
 			&& (tok2 = zend_memrchr(yystr, ')', yystr_len)) != NULL) {
@@ -1383,7 +1384,7 @@ static YYSIZE_T zend_yytnamerr(char *yyres, const char *yystr)
 
 	/* One of the expected tokens */
 	if (!yyres) {
-		return yystrlen(yystr) - (*yystr == '"' ? 2 : 0);
+		return strlen(yystr) - (*yystr == '"' ? 2 : 0);
 	}
 
 	if (*yystr == '"') {
