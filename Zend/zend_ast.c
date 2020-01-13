@@ -1337,7 +1337,7 @@ static ZEND_COLD void zend_ast_export_type(smart_str *str, zend_ast *ast, int in
 	if (ast->attr & ZEND_TYPE_NULLABLE) {
 		smart_str_appendc(str, '?');
 	}
-	zend_ast_export_ns_name(str, ast, 0, indent);
+	zend_ast_export_class_name(str, ast, 0, indent);
 }
 
 #define BINARY_OP(_op, _p, _pl, _pr) do { \

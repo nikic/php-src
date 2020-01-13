@@ -987,7 +987,8 @@ static void zend_resolve_property_types(void) /* {{{ */
 				ZEND_TYPE_FOREACH(prop_info->type, single_type) {
 					if (ZEND_TYPE_HAS_NAME(*single_type)) {
 						zend_string *type_name = ZEND_TYPE_NAME(*single_type);
-						ZEND_TYPE_SET_CE(*single_type, resolve_type_name(type_name));
+						zend_class_entry *ce = resolve_type_name(type_name);
+						ZEND_TYPE_SET_CLASS_REF(*single_type, ZEND_CE_TO_REF(ce));
 						zend_string_release(type_name);
 					}
 				} ZEND_TYPE_FOREACH_END();

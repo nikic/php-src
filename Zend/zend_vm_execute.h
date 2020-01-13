@@ -797,7 +797,8 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_OP_SPEC_HAN
 
 		if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
 			/* special case for typed properties */
-			zend_binary_assign_op_typed_prop(prop_info, prop, value OPLINE_CC EXECUTE_DATA_CC);
+			zend_binary_assign_op_typed_prop(
+				NULL, prop_info, prop, value OPLINE_CC EXECUTE_DATA_CC);
 		} else {
 			zend_binary_op(prop, prop, value OPLINE_CC);
 		}
@@ -825,7 +826,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_PRE_INC_STATIC_PROP_SPEC_HANDL
 		HANDLE_EXCEPTION();
 	}
 
-	zend_pre_incdec_property_zval(prop,
+	zend_pre_incdec_property_zval(NULL, prop,
 		ZEND_TYPE_IS_SET(prop_info->type) ? prop_info : NULL OPLINE_CC EXECUTE_DATA_CC);
 
 	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();
@@ -845,7 +846,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_POST_INC_STATIC_PROP_SPEC_HAND
 		HANDLE_EXCEPTION();
 	}
 
-	zend_post_incdec_property_zval(prop,
+	zend_post_incdec_property_zval(NULL, prop,
 		ZEND_TYPE_IS_SET(prop_info->type) ? prop_info : NULL OPLINE_CC EXECUTE_DATA_CC);
 
 	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();
@@ -952,7 +953,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_SPEC_OP_DAT
 	value = RT_CONSTANT((opline+1), (opline+1)->op1);
 
 	if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
-		value = zend_assign_to_typed_prop(prop_info, prop, value EXECUTE_DATA_CC);
+		value = zend_assign_to_typed_prop(NULL, prop_info, prop, value EXECUTE_DATA_CC);
 
 	} else {
 		value = zend_assign_to_variable(prop, value, IS_CONST, EX_USES_STRICT_TYPES());
@@ -983,7 +984,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_SPEC_OP_DAT
 	value = _get_zval_ptr_tmp((opline+1)->op1.var EXECUTE_DATA_CC);
 
 	if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
-		value = zend_assign_to_typed_prop(prop_info, prop, value EXECUTE_DATA_CC);
+		value = zend_assign_to_typed_prop(NULL, prop_info, prop, value EXECUTE_DATA_CC);
 		zval_ptr_dtor_nogc(EX_VAR((opline+1)->op1.var));
 	} else {
 		value = zend_assign_to_variable(prop, value, IS_TMP_VAR, EX_USES_STRICT_TYPES());
@@ -1014,7 +1015,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_SPEC_OP_DAT
 	value = _get_zval_ptr_var((opline+1)->op1.var EXECUTE_DATA_CC);
 
 	if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
-		value = zend_assign_to_typed_prop(prop_info, prop, value EXECUTE_DATA_CC);
+		value = zend_assign_to_typed_prop(NULL, prop_info, prop, value EXECUTE_DATA_CC);
 		zval_ptr_dtor_nogc(EX_VAR((opline+1)->op1.var));
 	} else {
 		value = zend_assign_to_variable(prop, value, IS_VAR, EX_USES_STRICT_TYPES());
@@ -1045,7 +1046,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_SPEC_OP_DAT
 	value = _get_zval_ptr_cv_BP_VAR_R((opline+1)->op1.var EXECUTE_DATA_CC);
 
 	if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
-		value = zend_assign_to_typed_prop(prop_info, prop, value EXECUTE_DATA_CC);
+		value = zend_assign_to_typed_prop(NULL, prop_info, prop, value EXECUTE_DATA_CC);
 
 	} else {
 		value = zend_assign_to_variable(prop, value, IS_CV, EX_USES_STRICT_TYPES());
@@ -1080,7 +1081,8 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_ASSIGN_STATIC_PROP_REF_SPEC_HA
 			prop = &EG(uninitialized_zval);
 		}
 	} else if (UNEXPECTED(ZEND_TYPE_IS_SET(prop_info->type))) {
-		prop = zend_assign_to_typed_property_reference(prop_info, prop, value_ptr EXECUTE_DATA_CC);
+		prop = zend_assign_to_typed_property_reference(
+			NULL, prop_info, prop, value_ptr EXECUTE_DATA_CC);
 	} else {
 		zend_assign_to_variable_reference(prop, value_ptr);
 	}
@@ -20981,7 +20983,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -21171,9 +21174,9 @@ pre_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -21236,10 +21239,10 @@ post_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -21454,7 +21457,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -21599,7 +21603,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -21744,7 +21749,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -21889,7 +21895,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -23246,7 +23253,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -23438,9 +23446,9 @@ pre_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -23504,10 +23512,10 @@ post_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -23724,7 +23732,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -23869,7 +23878,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -24014,7 +24024,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -24159,7 +24170,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -26702,7 +26714,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -26892,9 +26905,9 @@ pre_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -26957,10 +26970,10 @@ post_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -27175,7 +27188,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -27320,7 +27334,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -27465,7 +27480,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -27610,7 +27626,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -29143,7 +29160,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -29220,9 +29238,9 @@ pre_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -29285,10 +29303,10 @@ post_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -29654,7 +29672,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -29799,7 +29818,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -29944,7 +29964,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -30089,7 +30110,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -31013,7 +31035,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -31090,9 +31113,9 @@ pre_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -31156,10 +31179,10 @@ post_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -31521,7 +31544,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -31666,7 +31690,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -31811,7 +31836,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -31956,7 +31982,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -33410,7 +33437,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -33487,9 +33515,9 @@ pre_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -33552,10 +33580,10 @@ post_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -33916,7 +33944,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -34061,7 +34090,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -34206,7 +34236,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -34351,7 +34382,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -37429,7 +37461,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -37619,9 +37652,9 @@ pre_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -37684,10 +37717,10 @@ post_incdec_object:
 				if (IS_CONST == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -38165,7 +38198,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -38310,7 +38344,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -38455,7 +38490,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -38600,7 +38636,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -40908,7 +40945,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -41100,9 +41138,9 @@ pre_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -41166,10 +41204,10 @@ post_incdec_object:
 				if ((IS_TMP_VAR|IS_VAR) == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -41643,7 +41681,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -41788,7 +41827,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -41933,7 +41973,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -42078,7 +42119,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -45720,7 +45762,8 @@ assign_op_object:
 					}
 					if (UNEXPECTED(prop_info)) {
 						/* special case for typed properties */
-						zend_binary_assign_op_typed_prop(prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
+						zend_binary_assign_op_typed_prop(
+							zobj, prop_info, zptr, value OPLINE_CC EXECUTE_DATA_CC);
 					} else {
 						zend_binary_op(zptr, zptr, value OPLINE_CC);
 					}
@@ -45910,9 +45953,9 @@ pre_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info *) CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
-				zend_pre_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_pre_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_pre_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -45975,10 +46018,10 @@ post_incdec_object:
 				if (IS_CV == IS_CONST) {
 					prop_info = (zend_property_info*)CACHED_PTR_EX(cache_slot + 2);
 				} else {
-					prop_info = zend_object_fetch_property_type_info(Z_OBJ_P(object), zptr);
+					prop_info = zend_object_fetch_property_type_info(zobj, zptr);
 				}
 
-				zend_post_incdec_property_zval(zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
+				zend_post_incdec_property_zval(zobj, zptr, prop_info OPLINE_CC EXECUTE_DATA_CC);
 			}
 		} else {
 			zend_post_incdec_overloaded_property(zobj, name, cache_slot OPLINE_CC EXECUTE_DATA_CC);
@@ -46451,7 +46494,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CONST == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -46596,7 +46640,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_TMP_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -46741,7 +46786,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_VAR == IS_CONST && Z_TYPE_P(value) == orig_type) {
@@ -46886,7 +46932,8 @@ assign_object:
 						orig_type = Z_TYPE_P(value);
 					}
 
-					value = zend_assign_to_typed_prop(prop_info, property_val, value EXECUTE_DATA_CC);
+					value = zend_assign_to_typed_prop(
+						zobj, prop_info, property_val, value EXECUTE_DATA_CC);
 
 					/* will remain valid, thus no need to check prop_info in future here */
 					if (IS_CV == IS_CONST && Z_TYPE_P(value) == orig_type) {

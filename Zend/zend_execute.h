@@ -55,7 +55,8 @@ extern ZEND_API const zend_internal_function zend_pass_function;
 ZEND_API ZEND_COLD void ZEND_FASTCALL zend_missing_arg_error(zend_execute_data *execute_data);
 
 ZEND_API zend_bool ZEND_FASTCALL zend_verify_ref_assignable_zval(zend_reference *ref, zval *zv, zend_bool strict);
-ZEND_API zend_bool ZEND_FASTCALL zend_verify_prop_assignable_by_ref(zend_property_info *prop_info, zval *orig_val, zend_bool strict);
+ZEND_API zend_bool ZEND_FASTCALL zend_verify_prop_assignable_by_ref(
+		zend_object *obj, zend_property_info *prop_info, zval *orig_val, zend_bool strict);
 
 ZEND_API ZEND_COLD void zend_throw_ref_type_error_zval(zend_property_info *prop, zval *zv);
 ZEND_API ZEND_COLD void zend_throw_ref_type_error_type(zend_property_info *prop1, zend_property_info *prop2, zval *zv);
@@ -396,7 +397,7 @@ ZEND_API void zend_cleanup_unfinished_execution(zend_execute_data *execute_data,
 
 #define ZEND_CLASS_HAS_TYPE_HINTS(ce) ((ce->ce_flags & ZEND_ACC_HAS_TYPE_HINTS) == ZEND_ACC_HAS_TYPE_HINTS)
 
-zend_bool zend_verify_property_type(zend_property_info *info, zval *property, zend_bool strict);
+zend_bool zend_verify_property_type(zend_object *obj, zend_property_info *info, zval *property, zend_bool strict);
 ZEND_COLD void zend_verify_property_type_error(zend_property_info *info, zval *property);
 
 #define ZEND_REF_ADD_TYPE_SOURCE(ref, source) \

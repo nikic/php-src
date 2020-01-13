@@ -107,6 +107,12 @@ typedef struct _zend_trait_alias {
 	uint32_t modifiers;
 } zend_trait_alias;
 
+typedef struct _zend_generic_param {
+	zend_string *name;
+	zend_type bound_type;
+	zend_type default_type;
+} zend_generic_param;
+
 struct _zend_class_entry {
 	char type;
 	zend_string *name;
@@ -170,6 +176,17 @@ struct _zend_class_entry {
 	zend_class_name *trait_names;
 	zend_trait_alias **trait_aliases;
 	zend_trait_precedence **trait_precedences;
+
+	/* generic_params are the free generic parameters on this class.
+	 * parent_generic_args are the bound generic parameters of parent classes.
+	 * Pre-inheritance, this only includes what we pass to the direct parent.
+	 * During inheritance, any bound parameters from parent parameters will be
+	 * included before our own, and all generic parameter IDs will be shifted
+	 * accordingly. */
+	uint32_t num_generic_params;
+	uint32_t num_parent_generic_args;
+	zend_generic_param *generic_params;
+	zend_type *parent_generic_args;
 
 	union {
 		struct {

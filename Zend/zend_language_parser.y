@@ -524,8 +524,11 @@ generic_params:
 
 /* TODO: in/out indicator */
 generic_param:
-		T_STRING				{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, NULL); }
-	|	T_STRING ':' type_expr	{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, $3); }
+		T_STRING				{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, NULL, NULL); }
+	|	T_STRING ':' type_expr	{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, $3, NULL); }
+	|	T_STRING '=' type_expr	{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, NULL, $3); }
+	|	T_STRING ':' type_expr '=' type_expr
+			{ $$ = zend_ast_create(ZEND_AST_GENERIC_PARAM, $1, $3, $5); }
 ;
 
 class_declaration_statement:
@@ -693,7 +696,9 @@ type_expr:
 type:
 		T_ARRAY		{ $$ = zend_ast_create_ex(ZEND_AST_TYPE, IS_ARRAY); }
 	|	T_CALLABLE	{ $$ = zend_ast_create_ex(ZEND_AST_TYPE, IS_CALLABLE); }
-	|	name		{ $$ = $1; }
+	|	name		{ $$ = zend_ast_create(ZEND_AST_CLASS_REF, $1, NULL); }
+	|	name '<' generic_arg_list '>'
+			{ $$ = zend_ast_create(ZEND_AST_CLASS_REF, $1, $3); }
 ;
 
 union_type:
@@ -712,7 +717,7 @@ argument_list:
 ;
 
 /* The %dprec's resolve the foo(new Bar<T1, T2>(42)) ambiguity in a somewhat indirect way:
- * We give predecedence to the interpretation that has less function call arguments, which
+ * We give precedence to the interpretation that has fewer function call arguments, which
  * implies that there will be more generic arguments, thus favoring generics. It is necessary
  * to place the %dprec's here, as this is where the diverging parses will ultimately merge. */
 non_empty_argument_list:

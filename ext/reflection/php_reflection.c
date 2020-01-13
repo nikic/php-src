@@ -594,7 +594,7 @@ static void _parameter_string(smart_str *str, zend_function *fptr, struct _zend_
 		smart_str_append_printf(str, "<required> ");
 	}
 	if (ZEND_TYPE_IS_SET(arg_info->type)) {
-		zend_string *type_str = zend_type_to_string(arg_info->type);
+		zend_string *type_str = zend_type_to_string(arg_info->type, fptr->common.scope);
 		smart_str_append_printf(str, "%s ", ZSTR_VAL(type_str));
 		zend_string_release(type_str);
 	}
@@ -807,7 +807,8 @@ static void _function_string(smart_str *str, zend_function *fptr, zend_class_ent
 	if (fptr->op_array.fn_flags & ZEND_ACC_HAS_RETURN_TYPE) {
 		smart_str_append_printf(str, "  %s- Return [ ", indent);
 		if (ZEND_TYPE_IS_SET(fptr->common.arg_info[-1].type)) {
-			zend_string *type_str = zend_type_to_string(fptr->common.arg_info[-1].type);
+			zend_string *type_str =
+				zend_type_to_string(fptr->common.arg_info[-1].type, fptr->common.scope);
 			smart_str_append_printf(str, "%s ", ZSTR_VAL(type_str));
 			zend_string_release(type_str);
 		}
@@ -2859,7 +2860,7 @@ ZEND_METHOD(reflection_type, allowsNull)
 
 static zend_string *zend_type_to_string_without_null(zend_type type) {
 	ZEND_TYPE_FULL_MASK(type) &= ~MAY_BE_NULL;
-	return zend_type_to_string(type);
+	return zend_type_to_string(type, NULL);
 }
 
 /* {{{ proto public string ReflectionType::__toString()
@@ -2874,7 +2875,7 @@ ZEND_METHOD(reflection_type, __toString)
 	}
 	GET_REFLECTION_OBJECT_PTR(param);
 
-	RETURN_STR(zend_type_to_string(param->type));
+	RETURN_STR(zend_type_to_string(param->type, NULL));
 }
 /* }}} */
 
@@ -2893,7 +2894,7 @@ ZEND_METHOD(reflection_named_type, getName)
 	if (param->legacy_behavior) {
 		RETURN_STR(zend_type_to_string_without_null(param->type));
 	}
-	RETURN_STR(zend_type_to_string(param->type));
+	RETURN_STR(zend_type_to_string(param->type, NULL));
 }
 /* }}} */
 
@@ -2945,9 +2946,9 @@ ZEND_METHOD(reflection_union_type, getTypes)
 	} else if (ZEND_TYPE_HAS_NAME(param->type)) {
 		append_type(return_value,
 			(zend_type) ZEND_TYPE_INIT_CLASS(ZEND_TYPE_NAME(param->type), 0, 0));
-	} else if (ZEND_TYPE_HAS_CE(param->type)) {
+	} else if (ZEND_TYPE_HAS_CLASS_REF(param->type)) {
 		append_type(return_value,
-			(zend_type) ZEND_TYPE_INIT_CE(ZEND_TYPE_CE(param->type), 0, 0));
+			(zend_type) ZEND_TYPE_INIT_CLASS_REF(ZEND_TYPE_CLASS_REF(param->type), 0, 0));
 	}
 
 	type_mask = ZEND_TYPE_PURE_MASK(param->type);
@@ -3943,7 +3944,8 @@ ZEND_METHOD(reflection_class, setStaticPropertyValue)
 		}
 	}
 
-	if (ZEND_TYPE_IS_SET(prop_info->type) && !zend_verify_property_type(prop_info, value, 0)) {
+	if (ZEND_TYPE_IS_SET(prop_info->type)
+			&& !zend_verify_property_type(NULL, prop_info, value, 0)) {
 		return;
 	}
 

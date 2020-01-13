@@ -761,7 +761,7 @@ call_getter:
 			}
 
 			if (UNEXPECTED(prop_info)) {
-				zend_verify_prop_assignable_by_ref(prop_info, retval, (zobj->ce->__get->common.fn_flags & ZEND_ACC_STRICT_TYPES) != 0);
+				zend_verify_prop_assignable_by_ref(zobj, prop_info, retval, (zobj->ce->__get->common.fn_flags & ZEND_ACC_STRICT_TYPES) != 0);
 			}
 
 			OBJ_RELEASE(zobj);
@@ -810,7 +810,7 @@ ZEND_API zval *zend_std_write_property(zend_object *zobj, zend_string *name, zva
 
 			if (UNEXPECTED(prop_info)) {
 				ZVAL_COPY_VALUE(&tmp, value);
-				if (UNEXPECTED(!zend_verify_property_type(prop_info, &tmp, EG(current_execute_data) && ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))))) {
+				if (UNEXPECTED(!zend_verify_property_type(zobj, prop_info, &tmp, EG(current_execute_data) && ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))))) {
 					Z_TRY_DELREF_P(value);
 					variable_ptr = &EG(error_zval);
 					goto exit;
@@ -875,7 +875,7 @@ write_std_property:
 
 			if (UNEXPECTED(prop_info)) {
 				ZVAL_COPY_VALUE(&tmp, value);
-				if (UNEXPECTED(!zend_verify_property_type(prop_info, &tmp, ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))))) {
+				if (UNEXPECTED(!zend_verify_property_type(zobj, prop_info, &tmp, ZEND_CALL_USES_STRICT_TYPES(EG(current_execute_data))))) {
 					zval_ptr_dtor(value);
 					goto exit;
 				}

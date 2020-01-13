@@ -354,6 +354,22 @@ ZEND_API void destroy_zend_class(zval *zv)
 			if (ce->num_traits > 0) {
 				_destroy_zend_class_traits_info(ce);
 			}
+			if (ce->num_generic_params > 0) {
+				for (uint32_t i = 0; i < ce->num_generic_params; i++) {
+					zend_generic_param *param = &ce->generic_params[i];
+					zend_string_release(param->name);
+					zend_type_release(param->bound_type, /* persistent */ 0);
+					zend_type_release(param->default_type, /* persistent */ 0);
+				}
+				efree(ce->generic_params);
+			}
+			if (ce->num_parent_generic_args > 0) {
+				for (uint32_t i = 0; i < ce->num_parent_generic_args; i++) {
+					zend_type *type = &ce->parent_generic_args[i];
+					zend_type_release(*type, /* persistent */ 0);
+				}
+				efree(ce->parent_generic_args);
+			}
 
 			break;
 		case ZEND_INTERNAL_CLASS:
@@ -415,7 +431,7 @@ ZEND_API void destroy_zend_class(zval *zv)
 			if (ce->properties_info_table) {
 				free(ce->properties_info_table);
 			}
-			free(ce);
+			free((char *) ce - ZEND_CLASS_ENTRY_HEADER_SIZE);
 			break;
 	}
 }

@@ -1140,7 +1140,7 @@ ZEND_API void object_properties_init_ex(zend_object *object, HashTable *properti
 					zval tmp;
 
 					ZVAL_COPY_VALUE(&tmp, prop);
-					if (UNEXPECTED(!zend_verify_property_type(property_info, &tmp, 0))) {
+					if (UNEXPECTED(!zend_verify_property_type(object, property_info, &tmp, 0))) {
 						continue;
 					}
 					ZVAL_COPY_VALUE(slot, &tmp);
@@ -2507,7 +2507,8 @@ ZEND_API int zend_next_free_module(void) /* {{{ */
 
 static zend_class_entry *do_register_internal_class(zend_class_entry *orig_class_entry, uint32_t ce_flags) /* {{{ */
 {
-	zend_class_entry *class_entry = malloc(sizeof(zend_class_entry));
+	void *ref = malloc(sizeof(zend_class_entry) + ZEND_CLASS_ENTRY_HEADER_SIZE);
+	zend_class_entry *class_entry = zend_init_class_entry_header(ref);
 	zend_string *lowercase_name;
 	*class_entry = *orig_class_entry;
 
@@ -4025,7 +4026,7 @@ ZEND_API int zend_update_static_property_ex(zend_class_entry *scope, zend_string
 	Z_TRY_ADDREF_P(value);
 	if (ZEND_TYPE_IS_SET(prop_info->type)) {
 		ZVAL_COPY_VALUE(&tmp, value);
-		if (!zend_verify_property_type(prop_info, &tmp, /* strict */ 0)) {
+		if (!zend_verify_property_type(NULL, prop_info, &tmp, /* strict */ 0)) {
 			Z_TRY_DELREF_P(value);
 			return FAILURE;
 		}

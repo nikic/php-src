@@ -824,6 +824,7 @@ ZEND_API int pass_two(zend_op_array *op_array);
 ZEND_API zend_bool zend_is_compiling(void);
 ZEND_API char *zend_make_compiled_string_description(const char *name);
 ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify_handlers);
+zend_class_entry *zend_init_class_entry_header(void *ptr);
 uint32_t zend_get_class_fetch_type(zend_string *name);
 ZEND_API zend_uchar zend_get_call_op(const zend_op *init_op, zend_function *fbc);
 ZEND_API int zend_is_smart_branch(const zend_op *opline);
@@ -847,8 +848,8 @@ int ZEND_FASTCALL zendlex(zend_parser_stack_elem *elem);
 
 void zend_assert_valid_class_name(const zend_string *const_name);
 
+zend_string *zend_type_to_string(zend_type type, zend_class_entry *scope);
 zend_string *zend_type_to_string_resolved(zend_type type, zend_class_entry *scope);
-zend_string *zend_type_to_string(zend_type type);
 
 /* BEGIN: OPCODES */
 

@@ -137,32 +137,50 @@ typedef struct {
 
 #define _ZEND_TYPE_EXTRA_FLAGS_SHIFT 24
 #define _ZEND_TYPE_MASK ((1u << 24) - 1)
+
 /* Only one of these bits may be set. */
-#define _ZEND_TYPE_NAME_BIT (1u << 23)
-#define _ZEND_TYPE_CE_BIT   (1u << 22)
-#define _ZEND_TYPE_LIST_BIT (1u << 21)
-#define _ZEND_TYPE_KIND_MASK (_ZEND_TYPE_LIST_BIT|_ZEND_TYPE_CE_BIT|_ZEND_TYPE_NAME_BIT)
+#define _ZEND_TYPE_NAME_BIT      (1u << 23)
+#define _ZEND_TYPE_CLASS_REF_BIT (1u << 22)
+#define _ZEND_TYPE_LIST_BIT      (1u << 21)
+#define _ZEND_TYPE_GENERIC_PARAM_BIT (1u << 19)
+#define _ZEND_TYPE_NAMED_CLASS_REF_BIT (1u << 18)
+#define _ZEND_TYPE_CLASS_MASK \
+	(_ZEND_TYPE_LIST_BIT|_ZEND_TYPE_CLASS_REF_BIT \
+	 |_ZEND_TYPE_NAMED_CLASS_REF_BIT|_ZEND_TYPE_NAME_BIT)
+#define _ZEND_TYPE_COMPLEX_MASK (_ZEND_TYPE_CLASS_MASK|_ZEND_TYPE_GENERIC_PARAM_BIT)
 /* Whether the type list is arena allocated */
 #define _ZEND_TYPE_ARENA_BIT (1u << 20)
 /* Type mask excluding the flags above. */
-#define _ZEND_TYPE_MAY_BE_MASK ((1u << 20) - 1)
+#define _ZEND_TYPE_MAY_BE_MASK ((1u << 18) - 1)
 /* Must have same value as MAY_BE_NULL */
-#define _ZEND_TYPE_NULLABLE_BIT 0x2
+#define _ZEND_TYPE_NULLABLE_BIT 0x2u
+
+#define _ZEND_TYPE_LIST_NAME_TAG 0u
+#define _ZEND_TYPE_LIST_CLASS_REF_TAG 1u
+#define _ZEND_TYPE_LIST_NAMED_CLASS_REF_TAG 2u
+#define _ZEND_TYPE_LIST_GENERIC_PARAM_TAG 3u
+#define _ZEND_TYPE_LIST_TAG_MASK 3u
 
 #define ZEND_TYPE_IS_SET(t) \
 	(((t).type_mask & _ZEND_TYPE_MASK) != 0)
 
 #define ZEND_TYPE_HAS_CLASS(t) \
-	((((t).type_mask) & _ZEND_TYPE_KIND_MASK) != 0)
+	((((t).type_mask) & _ZEND_TYPE_CLASS_MASK) != 0)
 
-#define ZEND_TYPE_HAS_CE(t) \
-	((((t).type_mask) & _ZEND_TYPE_CE_BIT) != 0)
+#define ZEND_TYPE_HAS_COMPLEX(t) \
+	((((t).type_mask) & _ZEND_TYPE_COMPLEX_MASK) != 0)
+
+#define ZEND_TYPE_HAS_CLASS_REF(t) \
+	((((t).type_mask) & _ZEND_TYPE_CLASS_REF_BIT) != 0)
 
 #define ZEND_TYPE_HAS_NAME(t) \
 	((((t).type_mask) & _ZEND_TYPE_NAME_BIT) != 0)
 
 #define ZEND_TYPE_HAS_LIST(t) \
 	((((t).type_mask) & _ZEND_TYPE_LIST_BIT) != 0)
+
+#define ZEND_TYPE_HAS_GENERIC_PARAM(t) \
+	((((t).type_mask) & _ZEND_TYPE_GENERIC_PARAM_BIT) != 0)
 
 #define ZEND_TYPE_USES_ARENA(t) \
 	((((t).type_mask) & _ZEND_TYPE_ARENA_BIT) != 0)
@@ -176,11 +194,14 @@ typedef struct {
 #define ZEND_TYPE_LITERAL_NAME(t) \
 	((const char *) (t).ptr)
 
-#define ZEND_TYPE_CE(t) \
-	((zend_class_entry *) (t).ptr)
+#define ZEND_TYPE_CLASS_REF(t) \
+	((zend_class_reference *) (t).ptr)
 
 #define ZEND_TYPE_LIST(t) \
 	((zend_type_list *) (t).ptr)
+
+#define ZEND_TYPE_GENERIC_PARAM_ID(t) \
+	((uint32_t) (uintptr_t) (t).ptr)
 
 #define ZEND_TYPE_LIST_SIZE(num_types) \
 	(sizeof(zend_type_list) + ((num_types) - 1) * sizeof(zend_type))
@@ -218,14 +239,17 @@ typedef struct {
 #define ZEND_TYPE_SET_PTR(t, _ptr) \
 	((t).ptr = (_ptr))
 
+#define ZEND_TYPE_SET_GENERIC_PARAM_ID(t, _id) \
+	((t).ptr = (void *) (uintptr_t) (_id))
+
 #define ZEND_TYPE_SET_PTR_AND_KIND(t, _ptr, kind_bit) do { \
 	(t).ptr = (_ptr); \
-	(t).type_mask &= ~_ZEND_TYPE_KIND_MASK; \
+	(t).type_mask &= ~_ZEND_TYPE_COMPLEX_MASK; \
 	(t).type_mask |= (kind_bit); \
 } while (0)
 
-#define ZEND_TYPE_SET_CE(t, ce) \
-	ZEND_TYPE_SET_PTR_AND_KIND(t, ce, _ZEND_TYPE_CE_BIT)
+#define ZEND_TYPE_SET_CLASS_REF(t, ce_ref) \
+	ZEND_TYPE_SET_PTR_AND_KIND(t, ce_ref, _ZEND_TYPE_CLASS_REF_BIT)
 
 #define ZEND_TYPE_SET_LIST(t, list) \
 	ZEND_TYPE_SET_PTR_AND_KIND(t, list, _ZEND_TYPE_LIST_BIT)
@@ -267,8 +291,8 @@ typedef struct {
 #define ZEND_TYPE_INIT_PTR_MASK(ptr, type_mask) \
 	{ (void *) (ptr), (type_mask) }
 
-#define ZEND_TYPE_INIT_CE(_ce, allow_null, extra_flags) \
-	ZEND_TYPE_INIT_PTR(_ce, _ZEND_TYPE_CE_BIT, allow_null, extra_flags)
+#define ZEND_TYPE_INIT_CLASS_REF(ce_ref, allow_null, extra_flags) \
+	ZEND_TYPE_INIT_PTR(ce_ref, _ZEND_TYPE_CLASS_REF_BIT, allow_null, extra_flags)
 
 #define ZEND_TYPE_INIT_CLASS(class_name, allow_null, extra_flags) \
 	ZEND_TYPE_INIT_PTR(class_name, _ZEND_TYPE_NAME_BIT, allow_null, extra_flags)
@@ -278,6 +302,35 @@ typedef struct {
 
 #define ZEND_TYPE_INIT_CLASS_CONST_MASK(class_name, type_mask) \
 	ZEND_TYPE_INIT_PTR_MASK(class_name, _ZEND_TYPE_NAME_BIT | (type_mask))
+
+#define ZEND_TYPE_INIT_GENERIC_PARAM(param_id, extra_flags) \
+	{ (void *) (uintptr_t) param_id, _ZEND_TYPE_GENERIC_PARAM_BIT | (extra_flags) }
+
+/* Represents a list of generic type arguments. */
+typedef struct _zend_type_args {
+	uint32_t num_types;
+	zend_type types[1];
+} zend_type_args;
+
+/* Represents a class entry together with bound generic type arguments. Normal class entries
+ * are prefixed with a compatible header, such that any class can be cheaply reinterpreted as
+ * a zero-argument reference to itself. */
+typedef struct _zend_class_reference {
+	zend_class_entry *ce;
+	zend_type_args args;
+} zend_class_reference;
+
+/* The same, but for unresolved cases where we only have the name available.
+ * This should be structurally the same zend_class_reference to permit in-place resolution. */
+typedef struct _zend_named_class_reference {
+	zend_string *name;
+	zend_type_args args;
+} zend_named_class_reference;
+
+#define ZEND_CLASS_ENTRY_HEADER_SIZE (2 * sizeof(void*))
+
+#define ZEND_CE_TO_REF(ce) \
+	((zend_class_reference *) ((char *) (ce) - ZEND_CLASS_ENTRY_HEADER_SIZE))
 
 typedef union _zend_value {
 	zend_long         lval;				/* long value */
