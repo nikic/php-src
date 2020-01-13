@@ -1476,6 +1476,15 @@ static inline zend_bool class_name_refers_to_active_ce(zend_string *class_name, 
 }
 /* }}} */
 
+static zend_ast *unwrap_non_generic_class_ref(zend_ast *class_ast)
+{
+	if (class_ast->child[1] != NULL) {
+		zend_error_noreturn(E_COMPILE_ERROR,
+			"Generic type arguments are currently not supported here yet");
+	}
+	return class_ast->child[0];
+}
+
 uint32_t zend_get_class_fetch_type(zend_string *name) /* {{{ */
 {
 	if (zend_string_equals_literal_ci(name, "self")) {
@@ -1501,15 +1510,16 @@ static uint32_t zend_get_class_fetch_type_ast(zend_ast *name_ast) /* {{{ */
 }
 /* }}} */
 
-static zend_string *zend_resolve_const_class_name_reference(zend_ast *ast, const char *type)
+static zend_string *zend_resolve_const_class_name_reference(zend_ast *class_ast, const char *type)
 {
-	zend_string *class_name = zend_ast_get_str(ast);
-	if (ZEND_FETCH_CLASS_DEFAULT != zend_get_class_fetch_type_ast(ast)) {
+	zend_ast *name_ast = unwrap_non_generic_class_ref(class_ast);
+	zend_string *class_name = zend_ast_get_str(name_ast);
+	if (ZEND_FETCH_CLASS_DEFAULT != zend_get_class_fetch_type_ast(name_ast)) {
 		zend_error_noreturn(E_COMPILE_ERROR,
 			"Cannot use '%s' as %s, as it is reserved",
 			ZSTR_VAL(class_name), type);
 	}
-	return zend_resolve_class_name(class_name, ast->attr);
+	return zend_resolve_class_name(class_name, name_ast->attr);
 }
 
 static void zend_ensure_valid_class_fetch_type(uint32_t fetch_type) /* {{{ */
@@ -1532,12 +1542,14 @@ static zend_bool zend_try_compile_const_expr_resolve_class_name(zval *zv, zend_a
 {
 	uint32_t fetch_type;
 	zval *class_name;
+	zend_ast *name_ast;
 
-	if (class_ast->kind != ZEND_AST_ZVAL) {
+	if (class_ast->kind != ZEND_AST_CLASS_REF) {
 		zend_error_noreturn(E_COMPILE_ERROR, "Cannot use ::class with dynamic class name");
 	}
 
-	class_name = zend_ast_get_zval(class_ast);
+	name_ast = unwrap_non_generic_class_ref(class_ast);
+	class_name = zend_ast_get_zval(name_ast);
 
 	if (Z_TYPE_P(class_name) != IS_STRING) {
 		zend_error_noreturn(E_COMPILE_ERROR, "Illegal class name");
@@ -1563,7 +1575,7 @@ static zend_bool zend_try_compile_const_expr_resolve_class_name(zval *zv, zend_a
 		case ZEND_FETCH_CLASS_STATIC:
 			return 0;
 		case ZEND_FETCH_CLASS_DEFAULT:
-			ZVAL_STR(zv, zend_resolve_class_name_ast(class_ast));
+			ZVAL_STR(zv, zend_resolve_class_name_ast(name_ast));
 			return 1;
 		EMPTY_SWITCH_DEFAULT_CASE()
 	}
@@ -2366,13 +2378,14 @@ static inline zend_bool zend_can_write_to_variable(zend_ast *ast) /* {{{ */
 }
 /* }}} */
 
-static inline zend_bool zend_is_const_default_class_ref(zend_ast *name_ast) /* {{{ */
+static inline zend_bool zend_is_const_default_class_ref(zend_ast *class_ast) /* {{{ */
 {
-	if (name_ast->kind != ZEND_AST_ZVAL) {
+	if (class_ast->kind != ZEND_AST_CLASS_REF) {
 		return 0;
 	}
 
-	return ZEND_FETCH_CLASS_DEFAULT == zend_get_class_fetch_type_ast(name_ast);
+	return ZEND_FETCH_CLASS_DEFAULT ==
+		zend_get_class_fetch_type_ast(unwrap_non_generic_class_ref(class_ast));
 }
 /* }}} */
 
@@ -2420,14 +2433,14 @@ static inline void zend_set_class_name_op1(zend_op *opline, znode *class_node) /
 }
 /* }}} */
 
-static void zend_compile_class_ref(znode *result, zend_ast *name_ast, uint32_t fetch_flags) /* {{{ */
+static void zend_compile_class_ref(znode *result, zend_ast *class_ast, uint32_t fetch_flags) /* {{{ */
 {
 	uint32_t fetch_type;
 
-	if (name_ast->kind != ZEND_AST_ZVAL) {
+	if (class_ast->kind != ZEND_AST_CLASS_REF) {
 		znode name_node;
 
-		zend_compile_expr(&name_node, name_ast);
+		zend_compile_expr(&name_node, class_ast);
 
 		if (name_node.op_type == IS_CONST) {
 			zend_string *name;
@@ -2455,6 +2468,8 @@ static void zend_compile_class_ref(znode *result, zend_ast *name_ast, uint32_t f
 		}
 		return;
 	}
+
+	zend_ast *name_ast = unwrap_non_generic_class_ref(class_ast);
 
 	/* Fully qualified names are always default refs */
 	if (name_ast->attr == ZEND_NAME_FQ) {
@@ -5207,7 +5222,7 @@ void zend_compile_try(zend_ast *ast) /* {{{ */
 			opline->opcode = ZEND_CATCH;
 			opline->op1_type = IS_CONST;
 			opline->op1.constant = zend_add_class_name_literal(
-					zend_resolve_class_name_ast(class_ast));
+					zend_resolve_class_name_ast(unwrap_non_generic_class_ref(class_ast)));
 			opline->extended_value = zend_alloc_cache_slot();
 
 			if (zend_string_equals_literal(var_name, "this")) {
@@ -6476,7 +6491,7 @@ void zend_compile_use_trait(zend_ast *ast) /* {{{ */
 		zend_ast *trait_ast = traits->child[i];
 
 		if (ce->ce_flags & ZEND_ACC_INTERFACE) {
-			zend_string *name = zend_ast_get_str(trait_ast);
+			zend_string *name = zend_ast_get_str(unwrap_non_generic_class_ref(trait_ast));
 			zend_error_noreturn(E_COMPILE_ERROR, "Cannot use traits inside of interfaces. "
 				"%s is used in %s", ZSTR_VAL(name), ZSTR_VAL(ce->name));
 		}
@@ -8218,7 +8233,8 @@ void zend_compile_class_name(znode *result, zend_ast *ast) /* {{{ */
 	}
 
 	opline = zend_emit_op_tmp(result, ZEND_FETCH_CLASS_NAME, NULL, NULL);
-	opline->op1.num = zend_get_class_fetch_type(zend_ast_get_str(class_ast));
+	opline->op1.num =
+		zend_get_class_fetch_type(zend_ast_get_str(unwrap_non_generic_class_ref(class_ast)));
 }
 /* }}} */
 
@@ -8417,17 +8433,19 @@ void zend_compile_const_expr_class_const(zend_ast **ast_ptr) /* {{{ */
 	zend_ast *ast = *ast_ptr;
 	zend_ast *class_ast = ast->child[0];
 	zend_ast *const_ast = ast->child[1];
+	zend_ast *name_ast;
 	zend_string *class_name;
 	zend_string *const_name = zend_ast_get_str(const_ast);
 	zend_string *name;
 	int fetch_type;
 
-	if (class_ast->kind != ZEND_AST_ZVAL) {
+	if (class_ast->kind != ZEND_AST_CLASS_REF) {
 		zend_error_noreturn(E_COMPILE_ERROR,
 			"Dynamic class names are not allowed in compile-time class constant references");
 	}
 
-	class_name = zend_ast_get_str(class_ast);
+	name_ast = unwrap_non_generic_class_ref(class_ast);
+	class_name = zend_ast_get_str(name_ast);
 	fetch_type = zend_get_class_fetch_type(class_name);
 
 	if (ZEND_FETCH_CLASS_STATIC == fetch_type) {
@@ -8436,7 +8454,7 @@ void zend_compile_const_expr_class_const(zend_ast **ast_ptr) /* {{{ */
 	}
 
 	if (ZEND_FETCH_CLASS_DEFAULT == fetch_type) {
-		class_name = zend_resolve_class_name_ast(class_ast);
+		class_name = zend_resolve_class_name_ast(name_ast);
 	} else {
 		zend_string_addref(class_name);
 	}
@@ -8455,7 +8473,7 @@ void zend_compile_const_expr_class_name(zend_ast **ast_ptr) /* {{{ */
 {
 	zend_ast *ast = *ast_ptr;
 	zend_ast *class_ast = ast->child[0];
-	zend_string *class_name = zend_ast_get_str(class_ast);
+	zend_string *class_name = zend_ast_get_str(unwrap_non_generic_class_ref(class_ast));
 	uint32_t fetch_type = zend_get_class_fetch_type(class_name);
 
 	switch (fetch_type) {

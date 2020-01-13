@@ -12,14 +12,5 @@ var_dump(new Foo<A, B>);
 var_dump(new Foo<A, B>(1));
 
 ?>
---EXPECT--
-int(42)
-int(42)
-object(Foo)#1 (0) {
-}
-object(Foo)#1 (0) {
-}
-object(Foo)#1 (0) {
-}
-object(Foo)#1 (0) {
-}
+--EXPECTF--
+Fatal error: Generic type arguments are currently not supported here yet in %s on line %d
