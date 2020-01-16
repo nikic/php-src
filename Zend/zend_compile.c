@@ -1191,6 +1191,15 @@ static zend_string *zend_name_ref_to_string(zend_name_reference *name_ref) {
 	return zend_format_generic_name(name_ref->name, &name_ref->args);
 }
 
+static zend_string *zend_pnr_to_string(zend_packed_name_reference pnr) {
+	if (ZEND_PNR_IS_COMPLEX(pnr)) {
+		zend_name_reference *ref = ZEND_PNR_COMPLEX_GET_REF(pnr);
+		return zend_name_ref_to_string(ref);
+	} else {
+		return zend_string_copy(ZEND_PNR_SIMPLE_GET_NAME(pnr));
+	}
+}
+
 static zend_string *zend_type_to_string_impl(
 		zend_type type, zend_class_entry *scope, zend_bool resolve) {
 	zend_string *str = NULL;
@@ -1202,9 +1211,10 @@ static zend_string *zend_type_to_string_impl(
 				zend_string *name = zend_class_ref_to_string(ce_ref);
 				str = add_type_string(str, name);
 				zend_string_release(name);
-			} else if (ZEND_TYPE_HAS_NAME(*list_type)) {
-				str = add_type_string(str,
-					resolve_class_name(ZEND_TYPE_NAME(*list_type), scope, resolve));
+			} else if (ZEND_TYPE_HAS_PNR(*list_type)) {
+				zend_string *name = zend_pnr_to_string(ZEND_TYPE_PNR(*list_type));
+				str = add_type_string(str, resolve_class_name(name, scope, resolve));
+				zend_string_release(name);
 			} else {
 				uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(*list_type);
 				generic_param_id -= scope->num_parent_generic_args;
@@ -1212,14 +1222,13 @@ static zend_string *zend_type_to_string_impl(
 				str = add_type_string(str, param->name);
 			}
 		} ZEND_TYPE_LIST_FOREACH_END();
-	} else if (ZEND_TYPE_HAS_NAME(type)) {
-		str = zend_string_copy(resolve_class_name(ZEND_TYPE_NAME(type), scope, resolve));
+	} else if (ZEND_TYPE_HAS_PNR(type)) {
+		zend_string *name = zend_pnr_to_string(ZEND_TYPE_PNR(type));
+		str = zend_string_copy(resolve_class_name(name, scope, resolve));
+		zend_string_release(name);
 	} else if (ZEND_TYPE_HAS_CLASS_REF(type)) {
 		zend_class_reference *ce_ref = ZEND_TYPE_CLASS_REF(type);
 		str = zend_class_ref_to_string(ce_ref);
-	} else if (ZEND_TYPE_HAS_NAME_REF(type)) {
-		zend_name_reference *name_ref = ZEND_TYPE_NAME_REF(type);
-		str = zend_name_ref_to_string(name_ref);
 	} else if (ZEND_TYPE_HAS_GENERIC_PARAM(type)) {
 		uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(type);
 		generic_param_id -= scope->num_parent_generic_args;
@@ -1301,8 +1310,8 @@ static void zend_mark_function_as_generator() /* {{{ */
 		if (!valid_type) {
 			zend_type *single_type;
 			ZEND_TYPE_FOREACH(return_type, single_type) {
-				if (ZEND_TYPE_HAS_NAME(*single_type)
-						&& is_generator_compatible_class_type(ZEND_TYPE_NAME(*single_type))) {
+				if (ZEND_TYPE_HAS_PNR(*single_type)
+						&& is_generator_compatible_class_type(ZEND_TYPE_PNR_NAME(*single_type))) {
 					valid_type = 1;
 					break;
 				}
@@ -5603,6 +5612,15 @@ static zend_name_reference *zend_compile_name_reference(
 	return ref;
 }
 
+static zend_packed_name_reference zend_compile_pnr(
+		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
+	if (args_ast) {
+		return ZEND_PNR_ENCODE_REF(zend_compile_name_reference(name, args_ast, use_arena));
+	} else {
+		return ZEND_PNR_ENCODE_NAME(name);
+	}
+}
+
 static zend_type zend_compile_single_typename(zend_ast *ast, zend_bool use_arena)
 {
 	ZEND_ASSERT(!(ast->attr & ZEND_TYPE_NULLABLE));
@@ -5657,13 +5675,8 @@ static zend_type zend_compile_single_typename(zend_ast *ast, zend_bool use_arena
 				}
 			}
 
-			if (args_ast) {
-				zend_name_reference *ref =
-					zend_compile_name_reference(class_name, args_ast, use_arena);
-				return (zend_type) ZEND_TYPE_INIT_NAME_REF(ref, 0, 0);
-			} else {
-				return (zend_type) ZEND_TYPE_INIT_NAME(class_name, 0, 0);
-			}
+			zend_packed_name_reference pnr = zend_compile_pnr(class_name, args_ast, use_arena);
+			return (zend_type) ZEND_TYPE_INIT_PNR(pnr, 0, 0);
 		}
 	}
 }
@@ -5671,8 +5684,8 @@ static zend_type zend_compile_single_typename(zend_ast *ast, zend_bool use_arena
 static zend_bool zend_type_contains_traversable(zend_type type) {
 	zend_type *single_type;
 	ZEND_TYPE_FOREACH(type, single_type) {
-		if (ZEND_TYPE_HAS_NAME(*single_type)
-				&& zend_string_equals_literal_ci(ZEND_TYPE_NAME(*single_type), "Traversable")) {
+		if (ZEND_TYPE_HAS_PNR(*single_type)
+				&& zend_string_equals_literal_ci(ZEND_TYPE_PNR_NAME(*single_type), "Traversable")) {
 			return 1;
 		}
 	} ZEND_TYPE_FOREACH_END();
@@ -5712,14 +5725,9 @@ static zend_type zend_compile_typename(
 				if (!ZEND_TYPE_HAS_COMPLEX(type)) {
 					/* The first class type or generic type parameter can be stored directly
 					 * as the type payload. */
-					if (ZEND_TYPE_HAS_GENERIC_PARAM(single_type)) {
-						ZEND_TYPE_SET_GENERIC_PARAM_ID(type,
-							ZEND_TYPE_GENERIC_PARAM_ID(single_type));
-						ZEND_TYPE_FULL_MASK(type) |= _ZEND_TYPE_GENERIC_PARAM_BIT;
-					} else {
-						ZEND_TYPE_SET_PTR(type, ZEND_TYPE_NAME(single_type));
-						ZEND_TYPE_FULL_MASK(type) |= _ZEND_TYPE_NAME_BIT;
-					}
+					uint32_t extra_type_mask = ZEND_TYPE_PURE_MASK(type);
+					type = single_type;
+					ZEND_TYPE_FULL_MASK(type) |= extra_type_mask;
 				} else {
 					zend_type_list *list;
 					ZEND_ASSERT(!ZEND_TYPE_HAS_GENERIC_PARAM(single_type) && "Not implemented");
@@ -5750,12 +5758,12 @@ static zend_type zend_compile_typename(
 					}
 
 					/* Check for trivially redundant class types */
-					if (ZEND_TYPE_HAS_NAME(single_type)) {
+					if (ZEND_TYPE_HAS_SIMPLE_PNR(single_type)) {
 						for (size_t i = 0; i < list->num_types - 1; i++) {
-							if (ZEND_TYPE_HAS_NAME(list->types[i]) &&
+							if (ZEND_TYPE_HAS_SIMPLE_PNR(list->types[i]) &&
 								zend_string_equals_ci(
-									ZEND_TYPE_NAME(list->types[i]),
-									ZEND_TYPE_NAME(single_type))
+									ZEND_TYPE_PNR_SIMPLE_NAME(list->types[i]),
+									ZEND_TYPE_PNR_SIMPLE_NAME(single_type))
 							) {
 								zend_string *single_type_str =
 									zend_type_to_string(single_type, CG(active_class_entry));

@@ -102,28 +102,38 @@ ZEND_API void destroy_zend_function(zend_function *function)
 	zend_function_dtor(&tmp);
 }
 
+void zend_pnr_release(zend_packed_name_reference pnr, zend_bool uses_arena, zend_bool persistent) {
+	if (ZEND_PNR_IS_COMPLEX(pnr)) {
+		zend_name_reference *name_ref = ZEND_PNR_COMPLEX_GET_REF(pnr);
+		zend_type *arg_type;
+		zend_string_release(name_ref->name);
+		ZEND_TYPE_LIST_FOREACH(&name_ref->args, arg_type) {
+			if (ZEND_TYPE_HAS_PNR(*arg_type)) {
+				zend_pnr_release(ZEND_TYPE_PNR(*arg_type), uses_arena, persistent);
+			}
+		} ZEND_TYPE_LIST_FOREACH_END();
+		if (!uses_arena) {
+			pefree(name_ref, persistent);
+		}
+	} else {
+		zend_string_release(ZEND_PNR_SIMPLE_GET_NAME(pnr));
+	}
+}
+
 ZEND_API void zend_type_release(zend_type type, zend_bool persistent) {
+	zend_bool uses_arena = ZEND_TYPE_USES_ARENA(type);
 	if (ZEND_TYPE_HAS_LIST(type)) {
 		zend_type *list_type;
 		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(type), list_type) {
-			if (ZEND_TYPE_HAS_NAME(*list_type)) {
-				zend_string_release(ZEND_TYPE_NAME(*list_type));
+			if (ZEND_TYPE_HAS_PNR(*list_type)) {
+				zend_pnr_release(ZEND_TYPE_PNR(*list_type), uses_arena, persistent);
 			}
 		} ZEND_TYPE_LIST_FOREACH_END();
-		if (!ZEND_TYPE_USES_ARENA(type)) {
+		if (!uses_arena) {
 			pefree(ZEND_TYPE_LIST(type), persistent);
 		}
-	} else if (ZEND_TYPE_HAS_NAME(type)) {
-		zend_string_release(ZEND_TYPE_NAME(type));
-	} else if (ZEND_TYPE_HAS_NAME_REF(type)) {
-		zend_name_reference *ref = ZEND_TYPE_NAME_REF(type);
-		zend_string_release(ref->name);
-		for (uint32_t i = 0; i < ref->args.num_types; i++) {
-			zend_type_release(ref->args.types[i], persistent);
-		}
-		if (!ZEND_TYPE_USES_ARENA(type)) {
-			pefree(ref, persistent);
-		}
+	} else if (ZEND_TYPE_HAS_PNR(type)) {
+		zend_pnr_release(ZEND_TYPE_PNR(type), uses_arena, persistent);
 	}
 }
 

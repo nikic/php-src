@@ -985,11 +985,18 @@ static void zend_resolve_property_types(void) /* {{{ */
 			ZEND_HASH_FOREACH_PTR(&ce->properties_info, prop_info) {
 				zend_type *single_type;
 				ZEND_TYPE_FOREACH(prop_info->type, single_type) {
-					if (ZEND_TYPE_HAS_NAME(*single_type)) {
-						zend_string *type_name = ZEND_TYPE_NAME(*single_type);
-						zend_class_entry *ce = resolve_type_name(type_name);
-						ZEND_TYPE_SET_CLASS_REF(*single_type, ZEND_CE_TO_REF(ce));
-						zend_string_release(type_name);
+					if (ZEND_TYPE_HAS_PNR(*single_type)) {
+						zend_packed_name_reference pnr = ZEND_TYPE_PNR(*single_type);
+						zend_class_reference *ce_ref;
+						if (ZEND_PNR_IS_SIMPLE(pnr)) {
+							zend_string *type_name = ZEND_PNR_SIMPLE_GET_NAME(pnr);
+							zend_class_entry *ce = resolve_type_name(type_name);
+							zend_string_release(type_name);
+							ce_ref = ZEND_CE_TO_REF(ce);
+						} else {
+							ZEND_ASSERT(0);
+						}
+						ZEND_TYPE_SET_CLASS_REF(*single_type, ce_ref);
 					}
 				} ZEND_TYPE_FOREACH_END();
 			} ZEND_HASH_FOREACH_END();

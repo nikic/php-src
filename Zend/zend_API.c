@@ -2048,7 +2048,7 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 				internal_function->num_args--;
 			}
 			if (ZEND_TYPE_IS_SET(info->type)) {
-				if (ZEND_TYPE_HAS_NAME(info->type)) {
+				if (ZEND_TYPE_HAS_LITERAL_NAME(info->type)) {
 					const char *type_name = ZEND_TYPE_LITERAL_NAME(info->type);
 					if (!scope && (!strcasecmp(type_name, "self") || !strcasecmp(type_name, "parent"))) {
 						zend_error_noreturn(E_CORE_ERROR, "Cannot declare a return type of %s outside of a class scope", type_name);
@@ -2130,7 +2130,7 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 			reg_function->common.arg_info = new_arg_info + 1;
 			for (i = 0; i < num_args; i++) {
 				if (ZEND_TYPE_HAS_CLASS(new_arg_info[i].type)) {
-					ZEND_ASSERT(ZEND_TYPE_HAS_NAME(new_arg_info[i].type)
+					ZEND_ASSERT(ZEND_TYPE_HAS_LITERAL_NAME(new_arg_info[i].type)
 						&& "Only simple classes are currently supported");
 					const char *class_name = ZEND_TYPE_LITERAL_NAME(new_arg_info[i].type);
 					ZEND_TYPE_SET_PTR(new_arg_info[i].type,

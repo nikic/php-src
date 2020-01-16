@@ -644,7 +644,7 @@ static zend_never_inline ZEND_COLD void ZEND_FASTCALL zend_throw_non_object_erro
 /* Test used to preserve old error messages for simple types.
  * We might want to canonicalize all type errors instead. */
 static zend_bool is_complex_type(zend_type type) {
-	if (ZEND_TYPE_HAS_COMPLEX(type) && !ZEND_TYPE_HAS_NAME(type)) {
+	if (ZEND_TYPE_HAS_COMPLEX(type) && !ZEND_TYPE_HAS_SIMPLE_PNR(type)) {
 		return 1;
 	}
 	uint32_t type_mask_without_null = ZEND_TYPE_PURE_MASK_WITHOUT_NULL(type);
@@ -710,11 +710,11 @@ static ZEND_COLD void zend_verify_type_error_common(
 			}
 			smart_str_appendc(&str, ')');
 		}
-	} else if (ZEND_TYPE_HAS_CLASS(arg_info->type)) {
+	} else if (ZEND_TYPE_HAS_SIMPLE_PNR(arg_info->type)) {
 		zend_bool is_interface = 0;
 		zend_class_entry *ce = *cache_slot;
 		if (!ce) {
-			ce = zend_fetch_class(ZEND_TYPE_NAME(arg_info->type),
+			ce = zend_fetch_class(ZEND_TYPE_PNR_SIMPLE_NAME(arg_info->type),
 				(ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
 		}
 		if (ce) {
@@ -728,7 +728,7 @@ static ZEND_COLD void zend_verify_type_error_common(
 		} else {
 			/* We don't know whether it's a class or interface, assume it's a class */
 			smart_str_appends(&str, "be an instance of ");
-			smart_str_append(&str, ZEND_TYPE_NAME(arg_info->type));
+			smart_str_append(&str, ZEND_TYPE_PNR_SIMPLE_NAME(arg_info->type));
 		}
 
 		if (ZEND_TYPE_ALLOW_NULL(arg_info->type)) {
@@ -975,8 +975,8 @@ static zend_bool zend_check_and_resolve_property_class_type(
 	if (ZEND_TYPE_HAS_LIST(info->type)) {
 		zend_type *list_type;
 		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(info->type), list_type) {
-			if (ZEND_TYPE_HAS_NAME(*list_type)) {
-				zend_string *name = ZEND_TYPE_NAME(*list_type);
+			if (ZEND_TYPE_HAS_PNR(*list_type)) {
+				zend_string *name = ZEND_TYPE_PNR_NAME(*list_type);
 				ce = resolve_single_class_type(name, info->ce);
 				if (!ce) {
 					continue;
@@ -992,8 +992,8 @@ static zend_bool zend_check_and_resolve_property_class_type(
 		} ZEND_TYPE_LIST_FOREACH_END();
 		return 0;
 	} else {
-		if (UNEXPECTED(ZEND_TYPE_HAS_NAME(info->type))) {
-			zend_string *name = ZEND_TYPE_NAME(info->type);
+		if (UNEXPECTED(ZEND_TYPE_HAS_PNR(info->type))) {
+			zend_string *name = ZEND_TYPE_PNR_NAME(info->type);
 			ce = resolve_single_class_type(name, info->ce);
 			if (UNEXPECTED(!ce)) {
 				return 0;
@@ -1093,12 +1093,12 @@ static zend_always_inline zend_bool zend_check_type_slow(
 	// TODO: Figure out how to deal with cache_slot with generic types
 	// and try to get rid of these cache_slot checks. We probably need
 	// a separate code-path for this which makes use of a polymorphic cache.
-	if (ZEND_TYPE_HAS_NAME(type) && Z_TYPE_P(arg) == IS_OBJECT) {
+	if (ZEND_TYPE_HAS_PNR(type) && Z_TYPE_P(arg) == IS_OBJECT) {
 		zend_class_entry *ce;
 		if (EXPECTED(cache_slot && *cache_slot)) {
 			ce = (zend_class_entry *) *cache_slot;
 		} else {
-			ce = zend_fetch_class(ZEND_TYPE_NAME(type), (ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
+			ce = zend_fetch_class(ZEND_TYPE_PNR_NAME(type), (ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
 			if (UNEXPECTED(!ce)) {
 				goto builtin_types;
 			}
@@ -1124,13 +1124,13 @@ static zend_always_inline zend_bool zend_check_type_slow(
 	} else if (ZEND_TYPE_HAS_LIST(type)) {
 		zend_type *list_type;
 		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(type), list_type) {
-			if (ZEND_TYPE_HAS_NAME(*list_type)) {
+			if (ZEND_TYPE_HAS_PNR(*list_type)) {
 				if (Z_TYPE_P(arg) == IS_OBJECT) {
 					zend_class_entry *ce;
 					if (cache_slot && *cache_slot) {
 						ce = *cache_slot;
 					} else {
-						ce = zend_fetch_class(ZEND_TYPE_NAME(*list_type),
+						ce = zend_fetch_class(ZEND_TYPE_PNR_NAME(*list_type),
 							(ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
 						if (!ce) {
 							if (cache_slot) cache_slot++;

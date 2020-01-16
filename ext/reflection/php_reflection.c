@@ -231,8 +231,8 @@ static void reflection_free_objects_storage(zend_object *object) /* {{{ */
 		case REF_TYPE_TYPE:
 		{
 			type_reference *type_ref = intern->ptr;
-			if (ZEND_TYPE_HAS_NAME(type_ref->type)) {
-				zend_string_release(ZEND_TYPE_NAME(type_ref->type));
+			if (ZEND_TYPE_HAS_SIMPLE_PNR(type_ref->type)) {
+				zend_string_release(ZEND_TYPE_PNR_SIMPLE_NAME(type_ref->type));
 			}
 			efree(type_ref);
 			break;
@@ -1173,8 +1173,8 @@ static void reflection_type_factory(zend_type type, zval *object, zend_bool lega
 	 * do this for the top-level type, as resolutions inside type lists will be
 	 * fully visible to us (we'd have to do a fully copy of the type if we wanted
 	 * to prevent that). */
-	if (ZEND_TYPE_HAS_NAME(type)) {
-		zend_string_addref(ZEND_TYPE_NAME(type));
+	if (ZEND_TYPE_HAS_SIMPLE_PNR(type)) {
+		zend_string_addref(ZEND_TYPE_PNR_SIMPLE_NAME(type));
 	}
 }
 /* }}} */
@@ -2511,7 +2511,7 @@ ZEND_METHOD(reflection_parameter, getClass)
 	GET_REFLECTION_OBJECT_PTR(param);
 
 	// TODO: This is going to return null for union types, which is rather odd.
-	if (ZEND_TYPE_HAS_NAME(param->arg_info->type)) {
+	if (ZEND_TYPE_HAS_SIMPLE_PNR(param->arg_info->type)) {
 		/* Class name is stored as a string, we might also get "self" or "parent"
 		 * - For "self", simply use the function scope. If scope is NULL then
 		 *   the function is global and thus self does not make any sense
@@ -2526,7 +2526,7 @@ ZEND_METHOD(reflection_parameter, getClass)
 		 */
 		zend_string *class_name;
 
-		class_name = ZEND_TYPE_NAME(param->arg_info->type);
+		class_name = ZEND_TYPE_PNR_SIMPLE_NAME(param->arg_info->type);
 		if (0 == zend_binary_strcasecmp(ZSTR_VAL(class_name), ZSTR_LEN(class_name), "self", sizeof("self")- 1)) {
 			ce = param->fptr->common.scope;
 			if (!ce) {
@@ -2938,17 +2938,17 @@ ZEND_METHOD(reflection_union_type, getTypes)
 	GET_REFLECTION_OBJECT_PTR(param);
 
 	array_init(return_value);
-	if (ZEND_TYPE_HAS_LIST(param->type)) {
-		zend_type *list_type;
-		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(param->type), list_type) {
-			append_type(return_value, *list_type);
-		} ZEND_TYPE_LIST_FOREACH_END();
-	} else if (ZEND_TYPE_HAS_NAME(param->type)) {
-		append_type(return_value,
-			(zend_type) ZEND_TYPE_INIT_NAME(ZEND_TYPE_NAME(param->type), 0, 0));
-	} else if (ZEND_TYPE_HAS_CLASS_REF(param->type)) {
-		append_type(return_value,
-			(zend_type) ZEND_TYPE_INIT_CLASS_REF(ZEND_TYPE_CLASS_REF(param->type), 0, 0));
+	if (ZEND_TYPE_HAS_COMPLEX(param->type)) {
+		if (ZEND_TYPE_HAS_LIST(param->type)) {
+			zend_type *list_type;
+			ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(param->type), list_type) {
+				append_type(return_value, *list_type);
+			} ZEND_TYPE_LIST_FOREACH_END();
+		} else {
+			zend_type type = param->type;
+			ZEND_TYPE_FULL_MASK(type) &= ~_ZEND_TYPE_MAY_BE_MASK;
+			append_type(return_value, type);
+		}
 	}
 
 	type_mask = ZEND_TYPE_PURE_MASK(param->type);

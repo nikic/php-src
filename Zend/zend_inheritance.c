@@ -51,11 +51,12 @@ static void zend_type_copy_ctor(zend_type *type, zend_bool persistent) {
 
 		zend_type *list_type;
 		ZEND_TYPE_LIST_FOREACH(new_list, list_type) {
-			ZEND_ASSERT(ZEND_TYPE_HAS_NAME(*list_type));
-			zend_string_addref(ZEND_TYPE_NAME(*list_type));
+			ZEND_ASSERT(ZEND_TYPE_HAS_PNR(*list_type));
+			zend_string_addref(ZEND_TYPE_PNR_NAME(*list_type));
 		} ZEND_TYPE_LIST_FOREACH_END();
-	} else if (ZEND_TYPE_HAS_NAME(*type)) {
-		zend_string_addref(ZEND_TYPE_NAME(*type));
+	} else if (ZEND_TYPE_HAS_PNR(*type)) {
+		// TODO: Duplicate name reference... 
+		zend_string_addref(ZEND_TYPE_PNR_NAME(*type));
 	}
 }
 
@@ -325,8 +326,8 @@ static zend_bool unlinked_instanceof(zend_class_entry *ce1, zend_class_entry *ce
 static zend_bool zend_type_contains_traversable(zend_type type) {
 	zend_type *single_type;
 	ZEND_TYPE_FOREACH(type, single_type) {
-		if (ZEND_TYPE_HAS_NAME(*single_type)
-				&& zend_string_equals_literal_ci(ZEND_TYPE_NAME(*single_type), "Traversable")) {
+		if (ZEND_TYPE_HAS_PNR(*single_type)
+				&& zend_string_equals_literal_ci(ZEND_TYPE_PNR_NAME(*single_type), "Traversable")) {
 			return 1;
 		}
 	} ZEND_TYPE_FOREACH_END();
@@ -396,9 +397,9 @@ static inheritance_status zend_perform_covariant_class_type_check(
 
 	zend_type *single_type;
 	ZEND_TYPE_FOREACH(proto_type, single_type) {
-		if (ZEND_TYPE_HAS_NAME(*single_type)) {
+		if (ZEND_TYPE_HAS_PNR(*single_type)) {
 			zend_string *proto_class_name =
-				resolve_class_name(proto_scope, ZEND_TYPE_NAME(*single_type));
+				resolve_class_name(proto_scope, ZEND_TYPE_PNR_NAME(*single_type));
 			if (zend_string_equals_ci(fe_class_name, proto_class_name)) {
 				return INHERITANCE_SUCCESS;
 			}
@@ -447,8 +448,8 @@ static inheritance_status zend_perform_covariant_type_check(
 		}
 	}
 
-	if (ZEND_TYPE_HAS_NAME(fe_type)) {
-		zend_string *fe_class_name = resolve_class_name(fe_scope, ZEND_TYPE_NAME(fe_type));
+	if (ZEND_TYPE_HAS_PNR(fe_type)) {
+		zend_string *fe_class_name = resolve_class_name(fe_scope, ZEND_TYPE_PNR_NAME(fe_type));
 		inheritance_status status = zend_perform_covariant_class_type_check(
 			fe_scope, fe_class_name, proto_scope, proto_type, /* register_unresolved */ 0);
 		if (status != INHERITANCE_UNRESOLVED) {
@@ -466,9 +467,9 @@ static inheritance_status zend_perform_covariant_type_check(
 
 		/* First try to check whether we can succeed without resolving anything */
 		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(fe_type), list_type) {
-			ZEND_ASSERT(ZEND_TYPE_HAS_NAME(*list_type));
+			ZEND_ASSERT(ZEND_TYPE_HAS_PNR(*list_type));
 			zend_string *fe_class_name =
-				resolve_class_name(fe_scope, ZEND_TYPE_NAME(*list_type));
+				resolve_class_name(fe_scope, ZEND_TYPE_PNR_NAME(*list_type));
 			inheritance_status status = zend_perform_covariant_class_type_check(
 				fe_scope, fe_class_name, proto_scope, proto_type, /* register_unresolved */ 0);
 			if (status == INHERITANCE_ERROR) {
@@ -487,9 +488,9 @@ static inheritance_status zend_perform_covariant_type_check(
 
 		/* Register all classes that may have to be resolved */
 		ZEND_TYPE_LIST_FOREACH(ZEND_TYPE_LIST(fe_type), list_type) {
-			ZEND_ASSERT(ZEND_TYPE_HAS_NAME(*list_type));
+			ZEND_ASSERT(ZEND_TYPE_HAS_PNR(*list_type));
 			zend_string *fe_class_name =
-				resolve_class_name(fe_scope, ZEND_TYPE_NAME(*list_type));
+				resolve_class_name(fe_scope, ZEND_TYPE_PNR_NAME(*list_type));
 			zend_perform_covariant_class_type_check(
 				fe_scope, fe_class_name, proto_scope, proto_type, /* register_unresolved */ 1);
 		} ZEND_TYPE_LIST_FOREACH_END();
@@ -968,7 +969,7 @@ static zend_always_inline void do_inherit_method(zend_string *key, zend_function
 inheritance_status property_types_compatible(
 		const zend_property_info *parent_info, const zend_property_info *child_info) {
 	if (ZEND_TYPE_PURE_MASK(parent_info->type) == ZEND_TYPE_PURE_MASK(child_info->type)
-			&& ZEND_TYPE_NAME(parent_info->type) == ZEND_TYPE_NAME(child_info->type)) {
+			&& parent_info->type.ptr == child_info->type.ptr) {
 		return INHERITANCE_SUCCESS;
 	}
 
