@@ -2945,7 +2945,7 @@ ZEND_METHOD(reflection_union_type, getTypes)
 		} ZEND_TYPE_LIST_FOREACH_END();
 	} else if (ZEND_TYPE_HAS_NAME(param->type)) {
 		append_type(return_value,
-			(zend_type) ZEND_TYPE_INIT_CLASS(ZEND_TYPE_NAME(param->type), 0, 0));
+			(zend_type) ZEND_TYPE_INIT_NAME(ZEND_TYPE_NAME(param->type), 0, 0));
 	} else if (ZEND_TYPE_HAS_CLASS_REF(param->type)) {
 		append_type(return_value,
 			(zend_type) ZEND_TYPE_INIT_CLASS_REF(ZEND_TYPE_CLASS_REF(param->type), 0, 0));

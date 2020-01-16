@@ -115,6 +115,15 @@ ZEND_API void zend_type_release(zend_type type, zend_bool persistent) {
 		}
 	} else if (ZEND_TYPE_HAS_NAME(type)) {
 		zend_string_release(ZEND_TYPE_NAME(type));
+	} else if (ZEND_TYPE_HAS_NAME_REF(type)) {
+		zend_name_reference *ref = ZEND_TYPE_NAME_REF(type);
+		zend_string_release(ref->name);
+		for (uint32_t i = 0; i < ref->args.num_types; i++) {
+			zend_type_release(ref->args.types[i], persistent);
+		}
+		if (!ZEND_TYPE_USES_ARENA(type)) {
+			pefree(ref, persistent);
+		}
 	}
 }
 

@@ -644,7 +644,7 @@ static zend_never_inline ZEND_COLD void ZEND_FASTCALL zend_throw_non_object_erro
 /* Test used to preserve old error messages for simple types.
  * We might want to canonicalize all type errors instead. */
 static zend_bool is_complex_type(zend_type type) {
-	if (ZEND_TYPE_HAS_LIST(type) || ZEND_TYPE_HAS_GENERIC_PARAM(type)) {
+	if (ZEND_TYPE_HAS_COMPLEX(type) && !ZEND_TYPE_HAS_NAME(type)) {
 		return 1;
 	}
 	uint32_t type_mask_without_null = ZEND_TYPE_PURE_MASK_WITHOUT_NULL(type);

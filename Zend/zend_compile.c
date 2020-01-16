@@ -31,6 +31,7 @@
 #include "zend_language_scanner.h"
 #include "zend_inheritance.h"
 #include "zend_vm.h"
+#include "zend_smart_str.h"
 
 #define SET_NODE(target, src) do { \
 		target ## _type = (src)->op_type; \
@@ -1162,13 +1163,32 @@ static zend_string *resolve_class_name(
 	return name;
 }
 
-static zend_string *zend_class_ref_to_string(zend_class_reference *ce_ref) {
-	if (ce_ref->args.num_types == 0) {
-		return zend_string_copy(ce_ref->ce->name);
+static zend_string *zend_format_generic_name(zend_string *name, zend_type_args *args) {
+	if (args->num_types == 0) {
+		return zend_string_copy(name);
 	} else {
-		ZEND_ASSERT(0 && "TODO");
-		return NULL;
+		smart_str str = {0};
+		smart_str_append(&str, name);
+		smart_str_appendc(&str, '<');
+		for (uint32_t i = 0; i < args->num_types; i++) {
+			if (i != 0) {
+				smart_str_appends(&str, ", ");
+			}
+			zend_string *type_str = zend_type_to_string(args->types[i], NULL);
+			smart_str_append(&str, type_str);
+			zend_string_release(type_str);
+		}
+		smart_str_appendc(&str, '>');
+		return smart_str_extract(&str);
 	}
+}
+
+static zend_string *zend_class_ref_to_string(zend_class_reference *ce_ref) {
+	return zend_format_generic_name(ce_ref->ce->name, &ce_ref->args);
+}
+
+static zend_string *zend_name_ref_to_string(zend_name_reference *name_ref) {
+	return zend_format_generic_name(name_ref->name, &name_ref->args);
 }
 
 static zend_string *zend_type_to_string_impl(
@@ -1197,6 +1217,9 @@ static zend_string *zend_type_to_string_impl(
 	} else if (ZEND_TYPE_HAS_CLASS_REF(type)) {
 		zend_class_reference *ce_ref = ZEND_TYPE_CLASS_REF(type);
 		str = zend_class_ref_to_string(ce_ref);
+	} else if (ZEND_TYPE_HAS_NAME_REF(type)) {
+		zend_name_reference *name_ref = ZEND_TYPE_NAME_REF(type);
+		str = zend_name_ref_to_string(name_ref);
 	} else if (ZEND_TYPE_HAS_GENERIC_PARAM(type)) {
 		uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(type);
 		generic_param_id -= scope->num_parent_generic_args;
@@ -5565,7 +5588,22 @@ static uint32_t lookup_generic_param_id(zend_string *name) {
 	return (uint32_t) -1;
 }
 
-static zend_type zend_compile_single_typename(zend_ast *ast)
+static zend_name_reference *zend_compile_name_reference(
+		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
+	zend_ast_list *list = zend_ast_get_list(args_ast);
+	size_t alloc_size = ZEND_CLASS_REF_SIZE(list->children);
+	zend_name_reference *ref =
+		use_arena ? zend_arena_alloc(&CG(arena), alloc_size) : emalloc(alloc_size);
+	ref->name = name;
+	ref->args.num_types = list->children;
+	for (uint32_t i = 0; i < list->children; i++) {
+		zend_ast *type_ast = list->child[i];
+		ref->args.types[i] = zend_compile_typename(type_ast, 0, 0);
+	}
+	return ref;
+}
+
+static zend_type zend_compile_single_typename(zend_ast *ast, zend_bool use_arena)
 {
 	ZEND_ASSERT(!(ast->attr & ZEND_TYPE_NULLABLE));
 	if (ast->kind == ZEND_AST_TYPE) {
@@ -5619,7 +5657,13 @@ static zend_type zend_compile_single_typename(zend_ast *ast)
 				}
 			}
 
-			return (zend_type) ZEND_TYPE_INIT_CLASS(class_name, 0, 0);
+			if (args_ast) {
+				zend_name_reference *ref =
+					zend_compile_name_reference(class_name, args_ast, use_arena);
+				return (zend_type) ZEND_TYPE_INIT_NAME_REF(ref, 0, 0);
+			} else {
+				return (zend_type) ZEND_TYPE_INIT_NAME(class_name, 0, 0);
+			}
 		}
 	}
 }
@@ -5651,7 +5695,7 @@ static zend_type zend_compile_typename(
 		zend_ast_list *list = zend_ast_get_list(ast);
 		for (uint32_t i = 0; i < list->children; i++) {
 			zend_ast *type_ast = list->child[i];
-			zend_type single_type = zend_compile_single_typename(type_ast);
+			zend_type single_type = zend_compile_single_typename(type_ast, use_arena);
 			uint32_t type_mask_overlap =
 				ZEND_TYPE_PURE_MASK(type) & ZEND_TYPE_PURE_MASK(single_type);
 			if (type_mask_overlap) {
@@ -5724,7 +5768,7 @@ static zend_type zend_compile_typename(
 			}
 		}
 	} else {
-		type = zend_compile_single_typename(ast);
+		type = zend_compile_single_typename(ast, use_arena);
 	}
 
 	if (allow_null) {

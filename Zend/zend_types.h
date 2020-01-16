@@ -143,10 +143,9 @@ typedef struct {
 #define _ZEND_TYPE_CLASS_REF_BIT (1u << 22)
 #define _ZEND_TYPE_LIST_BIT      (1u << 21)
 #define _ZEND_TYPE_GENERIC_PARAM_BIT (1u << 19)
-#define _ZEND_TYPE_NAMED_CLASS_REF_BIT (1u << 18)
+#define _ZEND_TYPE_NAME_REF_BIT (1u << 18)
 #define _ZEND_TYPE_CLASS_MASK \
-	(_ZEND_TYPE_LIST_BIT|_ZEND_TYPE_CLASS_REF_BIT \
-	 |_ZEND_TYPE_NAMED_CLASS_REF_BIT|_ZEND_TYPE_NAME_BIT)
+	(_ZEND_TYPE_LIST_BIT|_ZEND_TYPE_CLASS_REF_BIT|_ZEND_TYPE_NAME_REF_BIT|_ZEND_TYPE_NAME_BIT)
 #define _ZEND_TYPE_COMPLEX_MASK (_ZEND_TYPE_CLASS_MASK|_ZEND_TYPE_GENERIC_PARAM_BIT)
 /* Whether the type list is arena allocated */
 #define _ZEND_TYPE_ARENA_BIT (1u << 20)
@@ -155,11 +154,11 @@ typedef struct {
 /* Must have same value as MAY_BE_NULL */
 #define _ZEND_TYPE_NULLABLE_BIT 0x2u
 
-#define _ZEND_TYPE_LIST_NAME_TAG 0u
-#define _ZEND_TYPE_LIST_CLASS_REF_TAG 1u
-#define _ZEND_TYPE_LIST_NAMED_CLASS_REF_TAG 2u
-#define _ZEND_TYPE_LIST_GENERIC_PARAM_TAG 3u
-#define _ZEND_TYPE_LIST_TAG_MASK 3u
+#define _ZEND_TYPE_LIST_NAME_TAG ((uintptr_t) 0)
+#define _ZEND_TYPE_LIST_CLASS_REF_TAG ((uintptr_t) 1)
+#define _ZEND_TYPE_LIST_NAME_REF_TAG ((uintptr_t) 2)
+#define _ZEND_TYPE_LIST_GENERIC_PARAM_TAG ((uintptr_t) 3)
+#define _ZEND_TYPE_LIST_TAG_MASK ((uintptr_t) 3)
 
 #define ZEND_TYPE_IS_SET(t) \
 	(((t).type_mask & _ZEND_TYPE_MASK) != 0)
@@ -175,6 +174,9 @@ typedef struct {
 
 #define ZEND_TYPE_HAS_NAME(t) \
 	((((t).type_mask) & _ZEND_TYPE_NAME_BIT) != 0)
+
+#define ZEND_TYPE_HAS_NAME_REF(t) \
+	((((t).type_mask) & _ZEND_TYPE_NAME_REF_BIT) != 0)
 
 #define ZEND_TYPE_HAS_LIST(t) \
 	((((t).type_mask) & _ZEND_TYPE_LIST_BIT) != 0)
@@ -196,6 +198,9 @@ typedef struct {
 
 #define ZEND_TYPE_CLASS_REF(t) \
 	((zend_class_reference *) (t).ptr)
+
+#define ZEND_TYPE_NAME_REF(t) \
+	((zend_name_reference *) (t).ptr)
 
 #define ZEND_TYPE_LIST(t) \
 	((zend_type_list *) (t).ptr)
@@ -294,8 +299,11 @@ typedef struct {
 #define ZEND_TYPE_INIT_CLASS_REF(ce_ref, allow_null, extra_flags) \
 	ZEND_TYPE_INIT_PTR(ce_ref, _ZEND_TYPE_CLASS_REF_BIT, allow_null, extra_flags)
 
-#define ZEND_TYPE_INIT_CLASS(class_name, allow_null, extra_flags) \
+#define ZEND_TYPE_INIT_NAME(class_name, allow_null, extra_flags) \
 	ZEND_TYPE_INIT_PTR(class_name, _ZEND_TYPE_NAME_BIT, allow_null, extra_flags)
+
+#define ZEND_TYPE_INIT_NAME_REF(class_name, allow_null, extra_flags) \
+	ZEND_TYPE_INIT_PTR(class_name, _ZEND_TYPE_NAME_REF_BIT, allow_null, extra_flags)
 
 #define ZEND_TYPE_INIT_CLASS_CONST(class_name, allow_null, extra_flags) \
 	ZEND_TYPE_INIT_PTR(class_name, _ZEND_TYPE_NAME_BIT, allow_null, extra_flags)
@@ -322,15 +330,18 @@ typedef struct _zend_class_reference {
 
 /* The same, but for unresolved cases where we only have the name available.
  * This should be structurally the same zend_class_reference to permit in-place resolution. */
-typedef struct _zend_named_class_reference {
+typedef struct _zend_name_reference {
 	zend_string *name;
 	zend_type_args args;
-} zend_named_class_reference;
+} zend_name_reference;
 
 #define ZEND_CLASS_ENTRY_HEADER_SIZE (2 * sizeof(void*))
 
 #define ZEND_CE_TO_REF(ce) \
 	((zend_class_reference *) ((char *) (ce) - ZEND_CLASS_ENTRY_HEADER_SIZE))
+
+#define ZEND_CLASS_REF_SIZE(num_types) \
+	(sizeof(zend_class_reference) - sizeof(zend_type) + (num_types) * sizeof(zend_type))
 
 typedef union _zend_value {
 	zend_long         lval;				/* long value */
