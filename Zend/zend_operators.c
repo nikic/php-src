@@ -2207,6 +2207,39 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_function_slow(const zend_class_entry
 }
 /* }}} */
 
+static zend_always_inline zend_bool zend_type_lists_compatible(
+		const zend_type_list *list1, const zend_type_list *list2) {
+	if (list1->num_types != list2->num_types) {
+		return 0;
+	}
+
+	for (uint32_t i = 0; i < list1->num_types; i++) {
+		const zend_type *type1 = &list1->types[i];
+		const zend_type *type2 = &list2->types[i];
+		// TODO: Implement proper type comparison.
+		if (type1->type_mask == type2->type_mask && type1->ptr == type2->ptr) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+ZEND_API zend_bool ZEND_FASTCALL instanceof_unpacked_slow(
+		const zend_class_reference *ce_ref, const zend_class_entry *ce, const zend_type_list *args) {
+	if (ce->ce_flags & ZEND_ACC_INTERFACE) {
+		return instanceof_function(ce_ref->ce, ce);
+	} else {
+		do {
+			if (ce_ref->ce == ce && zend_type_lists_compatible(&ce_ref->args, args)) {
+				return 1;
+			}
+			// TODO: This.
+			ce_ref = ce_ref->ce->parent ? ZEND_CE_TO_REF(ce_ref->ce->parent) : NULL;
+		} while (ce_ref);
+		return 0;
+	}
+}
+
 #define LOWER_CASE 1
 #define UPPER_CASE 2
 #define NUMERIC 3

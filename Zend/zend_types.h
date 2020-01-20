@@ -348,6 +348,10 @@ typedef struct _zend_name_reference {
 /* A packed name reference is used to either store a simple name string,
  * or a full zend_name_reference structure. The low bit is reserved for the tag. */
 typedef uintptr_t zend_packed_name_reference;
+
+// TODO: Make this non-static?
+static const zend_type_list zend_empty_type_list = {0};
+
 #define ZEND_PNR_IS_COMPLEX(pnr) ((pnr) & 1)
 #define ZEND_PNR_IS_SIMPLE(pnr) !ZEND_PNR_IS_COMPLEX(pnr)
 #define ZEND_PNR_SIMPLE_GET_NAME(pnr) ((zend_string *) (pnr))
@@ -362,12 +366,12 @@ typedef uintptr_t zend_packed_name_reference;
 
 #define ZEND_PNR_UNPACK(pnr, name_var, args_var) do { \
 	if (ZEND_PNR_IS_COMPLEX(pnr)) { \
-		zend_name_reference *__ref = ZEND_PNR_GET_REF(pnr); \
+		zend_name_reference *__ref = ZEND_PNR_COMPLEX_GET_REF(pnr); \
 		(name_var) = __ref->name; \
 		(args_var) = &__ref->args; \
 	} else { \
 		(name_var) = ZEND_PNR_SIMPLE_GET_NAME(pnr); \
-		(args_var) = NULL; \
+		(args_var) = &zend_empty_type_list; \
 	} \
 } while (0)
 

@@ -1095,16 +1095,19 @@ static zend_always_inline zend_bool zend_check_type_slow(
 	// a separate code-path for this which makes use of a polymorphic cache.
 	if (ZEND_TYPE_HAS_PNR(type) && Z_TYPE_P(arg) == IS_OBJECT) {
 		zend_class_entry *ce;
+		zend_string *name;
+		const zend_type_list *args;
+		ZEND_PNR_UNPACK(ZEND_TYPE_PNR(type), name, args);
 		if (EXPECTED(cache_slot && *cache_slot)) {
 			ce = (zend_class_entry *) *cache_slot;
 		} else {
-			ce = zend_fetch_class(ZEND_TYPE_PNR_NAME(type), (ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
+			ce = zend_fetch_class(name, (ZEND_FETCH_CLASS_AUTO | ZEND_FETCH_CLASS_NO_AUTOLOAD));
 			if (UNEXPECTED(!ce)) {
 				goto builtin_types;
 			}
 			if (cache_slot) *cache_slot = (void *) ce;
 		}
-		if (instanceof_function(Z_OBJCE_P(arg), ce)) {
+		if (instanceof_unpacked(ZEND_CE_TO_REF(Z_OBJCE_P(arg)), ce, args)) {
 			return 1;
 		}
 		builtin_types:;
