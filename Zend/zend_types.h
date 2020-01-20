@@ -314,25 +314,19 @@ typedef struct {
 #define ZEND_TYPE_INIT_GENERIC_PARAM(param_id, extra_flags) \
 	{ (void *) (uintptr_t) param_id, _ZEND_TYPE_GENERIC_PARAM_BIT | (extra_flags) }
 
-/* Represents a list of generic type arguments. */
-typedef struct _zend_type_args {
-	uint32_t num_types;
-	zend_type types[1];
-} zend_type_args;
-
 /* Represents a class entry together with bound generic type arguments. Normal class entries
  * are prefixed with a compatible header, such that any class can be cheaply reinterpreted as
  * a zero-argument reference to itself. */
 typedef struct _zend_class_reference {
 	zend_class_entry *ce;
-	zend_type_args args;
+	zend_type_list args;
 } zend_class_reference;
 
 /* The same, but for unresolved cases where we only have the name available.
  * This should be structurally the same zend_class_reference to permit in-place resolution. */
 typedef struct _zend_name_reference {
 	zend_string *name;
-	zend_type_args args;
+	zend_type_list args;
 } zend_name_reference;
 
 #define ZEND_CLASS_ENTRY_HEADER_SIZE (2 * sizeof(void*))

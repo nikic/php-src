@@ -1163,7 +1163,7 @@ static zend_string *resolve_class_name(
 	return name;
 }
 
-static zend_string *zend_format_generic_name(zend_string *name, zend_type_args *args) {
+static zend_string *zend_format_generic_name(zend_string *name, zend_type_list *args) {
 	if (args->num_types == 0) {
 		return zend_string_copy(name);
 	} else {
