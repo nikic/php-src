@@ -81,8 +81,8 @@ ZEND_API void rebuild_object_properties(zend_object *zobj) /* {{{ */
 				}
 			} ZEND_HASH_FOREACH_END();
 			if (flags & ZEND_ACC_CHANGED) {
-				while (ce->parent && ce->parent->default_properties_count) {
-					ce = ce->parent;
+				while (ce->parent && ce->parent->ce->default_properties_count) {
+					ce = ce->parent->ce;
 					ZEND_HASH_FOREACH_PTR(&ce->properties_info, prop_info) {
 						if (prop_info->ce == ce &&
 						    !(prop_info->flags & ZEND_ACC_STATIC) &&
@@ -324,12 +324,12 @@ static void zend_std_call_issetter(zend_object *zobj, zend_string *prop_name, zv
 
 static zend_always_inline zend_bool is_derived_class(zend_class_entry *child_class, zend_class_entry *parent_class) /* {{{ */
 {
-	child_class = child_class->parent;
-	while (child_class) {
-		if (child_class == parent_class) {
+	zend_class_reference *ref = child_class->parent;
+	while (ref) {
+		if (ref->ce == parent_class) {
 			return 1;
 		}
-		child_class = child_class->parent;
+		ref = ref->ce->parent;
 	}
 
 	return 0;
@@ -1179,7 +1179,7 @@ ZEND_API int zend_check_protected(zend_class_entry *ce, zend_class_entry *scope)
 		if (fbc_scope==scope) {
 			return 1;
 		}
-		fbc_scope = fbc_scope->parent;
+		fbc_scope = fbc_scope->parent ? fbc_scope->parent->ce : NULL;
 	}
 
 	/* Is the function's scope the same as our current object context,
@@ -1189,7 +1189,7 @@ ZEND_API int zend_check_protected(zend_class_entry *ce, zend_class_entry *scope)
 		if (scope==ce) {
 			return 1;
 		}
-		scope = scope->parent;
+		scope = scope->parent ? scope->parent->ce : NULL;
 	}
 	return 0;
 }
@@ -1431,14 +1431,14 @@ ZEND_API void zend_class_init_statics(zend_class_entry *class_type) /* {{{ */
 
 	if (class_type->default_static_members_count && !CE_STATIC_MEMBERS(class_type)) {
 		if (class_type->parent) {
-			zend_class_init_statics(class_type->parent);
+			zend_class_init_statics(class_type->parent->ce);
 		}
 
 		ZEND_MAP_PTR_SET(class_type->static_members_table, emalloc(sizeof(zval) * class_type->default_static_members_count));
 		for (i = 0; i < class_type->default_static_members_count; i++) {
 			p = &class_type->default_static_members_table[i];
 			if (Z_TYPE_P(p) == IS_INDIRECT) {
-				zval *q = &CE_STATIC_MEMBERS(class_type->parent)[i];
+				zval *q = &CE_STATIC_MEMBERS(class_type->parent->ce)[i];
 				ZVAL_DEINDIRECT(q);
 				ZVAL_INDIRECT(&CE_STATIC_MEMBERS(class_type)[i], q);
 			} else {

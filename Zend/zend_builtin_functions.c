@@ -772,7 +772,7 @@ ZEND_FUNCTION(get_parent_class)
 	if (!ZEND_NUM_ARGS()) {
 		ce = zend_get_executed_scope();
 		if (ce && ce->parent) {
-			RETURN_STR_COPY(ce->parent->name);
+			RETURN_STR_COPY(ce->parent->ce->name);
 		} else {
 			RETURN_FALSE;
 		}
@@ -785,7 +785,7 @@ ZEND_FUNCTION(get_parent_class)
 	}
 
 	if (ce && ce->parent) {
-		RETURN_STR_COPY(ce->parent->name);
+		RETURN_STR_COPY(ce->parent->ce->name);
 	} else {
 		RETURN_FALSE;
 	}

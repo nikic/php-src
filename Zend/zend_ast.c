@@ -556,7 +556,7 @@ ZEND_API int ZEND_FASTCALL zend_ast_evaluate(zval *result, zend_ast *ast, zend_c
 						"Cannot use \"parent\" when current class scope has no parent");
 					return FAILURE;
 				}
-				ZVAL_STR_COPY(result, scope->parent->name);
+				ZVAL_STR_COPY(result, scope->parent->ce->name);
 			} else {
 				ZEND_ASSERT(0 && "Should have errored during compilation");
 			}

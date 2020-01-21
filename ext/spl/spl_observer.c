@@ -251,7 +251,7 @@ static zend_object *spl_object_storage_new_ex(zend_class_entry *class_type, zend
 			break;
 		}
 
-		parent = parent->parent;
+		parent = parent->parent ? parent->parent->ce : NULL;
 	}
 
 	if (orig) {

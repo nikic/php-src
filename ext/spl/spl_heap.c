@@ -428,7 +428,7 @@ static zend_object *spl_heap_object_new_ex(zend_class_entry *class_type, zend_ob
 			break;
 		}
 
-		parent = parent->parent;
+		parent = parent->parent ? parent->parent->ce : NULL;
 		inherited = 1;
 	}
 

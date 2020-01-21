@@ -118,8 +118,8 @@ struct _zend_class_entry {
 	zend_string *name;
 	/* class_entry or string depending on ZEND_ACC_LINKED */
 	union {
-		zend_class_entry *parent;
-		zend_string *parent_name;
+		zend_class_reference *parent;
+		zend_name_reference *parent_name;
 	};
 	int refcount;
 	uint32_t ce_flags;
@@ -178,15 +178,11 @@ struct _zend_class_entry {
 	zend_trait_precedence **trait_precedences;
 
 	/* generic_params are the free generic parameters on this class.
-	 * parent_generic_args are the bound generic parameters of parent classes.
-	 * Pre-inheritance, this only includes what we pass to the direct parent.
-	 * During inheritance, any bound parameters from parent parameters will be
-	 * included before our own, and all generic parameter IDs will be shifted
-	 * accordingly. */
+	 * bound_generic_args are the bound generic parameters of parent classes. */
 	uint32_t num_generic_params;
-	uint32_t num_parent_generic_args;
+	uint32_t num_bound_generic_args;
 	zend_generic_param *generic_params;
-	zend_type *parent_generic_args;
+	zend_type *bound_generic_args;
 
 	union {
 		struct {

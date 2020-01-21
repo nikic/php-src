@@ -228,7 +228,7 @@ static zend_object *spl_fixedarray_object_new_ex(zend_class_entry *class_type, z
 			break;
 		}
 
-		parent = parent->parent;
+		parent = parent->parent ? parent->parent->ce : NULL;
 		inherited = 1;
 	}
 

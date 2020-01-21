@@ -127,7 +127,7 @@ int spl_add_classes(zend_class_entry *pce, zval *list, int sub, int allow, int c
 	if (sub) {
 		spl_add_interfaces(list, pce, allow, ce_flags);
 		while (pce->parent) {
-			pce = pce->parent;
+			pce = pce->parent->ce;
 			spl_add_classes(pce, list, sub, allow, ce_flags);
 		}
 	}

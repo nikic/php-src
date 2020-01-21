@@ -413,7 +413,7 @@ static zend_object *spl_dllist_object_new_ex(zend_class_entry *class_type, zend_
 			break;
 		}
 
-		parent = parent->parent;
+		parent = parent->parent ? parent->parent->ce : NULL;
 		inherited = 1;
 	}
 

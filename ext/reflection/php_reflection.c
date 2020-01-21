@@ -338,7 +338,7 @@ static void _class_string(smart_str *str, zend_class_entry *ce, zval *obj, char 
 	}
 	smart_str_append_printf(str, "%s", ZSTR_VAL(ce->name));
 	if (ce->parent) {
-		smart_str_append_printf(str, " extends %s", ZSTR_VAL(ce->parent->name));
+		smart_str_append_printf(str, " extends %s", ZSTR_VAL(ce->parent->ce->name));
 	}
 
 	if (ce->num_interfaces) {
@@ -736,7 +736,7 @@ static void _function_string(smart_str *str, zend_function *fptr, zend_class_ent
 			smart_str_append_printf(str, ", inherits %s", ZSTR_VAL(fptr->common.scope->name));
 		} else if (fptr->common.scope->parent) {
 			lc_name = zend_string_tolower(fptr->common.function_name);
-			if ((overwrites = zend_hash_find_ptr(&fptr->common.scope->parent->function_table, lc_name)) != NULL) {
+			if ((overwrites = zend_hash_find_ptr(&fptr->common.scope->parent->ce->function_table, lc_name)) != NULL) {
 				if (fptr->common.scope != overwrites->common.scope) {
 					smart_str_append_printf(str, ", overwrites %s", ZSTR_VAL(overwrites->common.scope->name));
 				}
@@ -2546,7 +2546,7 @@ ZEND_METHOD(reflection_parameter, getClass)
 					"Parameter uses 'parent' as type hint although class does not have a parent!");
 				RETURN_THROWS();
 			}
-			ce = ce->parent;
+			ce = ce->parent ? ce->parent->ce : NULL;
 		} else {
 			ce = zend_lookup_class(class_name);
 			if (!ce) {
@@ -5025,7 +5025,7 @@ ZEND_METHOD(reflection_class, getParentClass)
 	GET_REFLECTION_OBJECT_PTR(ce);
 
 	if (ce->parent) {
-		zend_reflection_class_factory(ce->parent, return_value);
+		zend_reflection_class_factory(ce->parent->ce, return_value);
 	} else {
 		RETURN_FALSE;
 	}

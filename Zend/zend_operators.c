@@ -2195,12 +2195,13 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_function_slow(const zend_class_entry
 		return 0;
 	} else {
 		while (1) {
-			instance_ce = instance_ce->parent;
+			zend_class_reference *parent_ref = instance_ce->parent;
+			if (parent_ref == NULL) {
+				return 0;
+			}
+			instance_ce = parent_ref->ce;
 			if (instance_ce == ce) {
 				return 1;
-			}
-			if (instance_ce == NULL) {
-				return 0;
 			}
 		}
 	}
@@ -2217,7 +2218,7 @@ static zend_always_inline zend_bool zend_type_lists_compatible(
 		const zend_type *type1 = &list1->types[i];
 		const zend_type *type2 = &list2->types[i];
 		// TODO: Implement proper type comparison.
-		if (type1->type_mask == type2->type_mask && type1->ptr == type2->ptr) {
+		if (type1->type_mask != type2->type_mask || type1->ptr != type2->ptr) {
 			return 0;
 		}
 	}
@@ -2233,8 +2234,7 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_unpacked_slow(
 			if (ce_ref->ce == ce && zend_type_lists_compatible(&ce_ref->args, args)) {
 				return 1;
 			}
-			// TODO: This.
-			ce_ref = ce_ref->ce->parent ? ZEND_CE_TO_REF(ce_ref->ce->parent) : NULL;
+			ce_ref = ce_ref->ce->parent;
 		} while (ce_ref);
 		return 0;
 	}

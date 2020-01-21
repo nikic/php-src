@@ -1035,7 +1035,7 @@ ZEND_API int zend_update_class_constants(zend_class_entry *class_type) /* {{{ */
 		zend_property_info *prop_info;
 
 		if (class_type->parent) {
-			if (UNEXPECTED(zend_update_class_constants(class_type->parent) != SUCCESS)) {
+			if (UNEXPECTED(zend_update_class_constants(class_type->parent->ce) != SUCCESS)) {
 				return FAILURE;
 			}
 		}
@@ -2748,7 +2748,7 @@ static int zend_is_callable_check_class(zend_string *name, zend_class_entry *sco
 			if (error) *error = estrdup("cannot access parent:: when current class scope has no parent");
 		} else {
 			fcc->called_scope = zend_get_called_scope(EG(current_execute_data));
-			fcc->calling_scope = scope->parent;
+			fcc->calling_scope = scope->parent->ce;
 			if (!fcc->object) {
 				fcc->object = zend_get_this_object(EG(current_execute_data));
 			}

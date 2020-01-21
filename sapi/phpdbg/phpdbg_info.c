@@ -403,13 +403,13 @@ PHPDBG_INFO(classes) /* {{{ */
 		phpdbg_print_class_name(ce);
 
 		if (ce->parent) {
-			zend_class_entry *pce;
+			zend_class_reference *pce;
 			phpdbg_xml("<parents %r>");
 			pce = ce->parent;
 			do {
 				phpdbg_out("|-------- ");
-				phpdbg_print_class_name(pce);
-			} while ((pce = pce->parent));
+				phpdbg_print_class_name(pce->ce);
+			} while ((pce = pce->ce->parent));
 			phpdbg_xml("</parents>");
 		}
 

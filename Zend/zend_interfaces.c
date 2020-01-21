@@ -289,7 +289,7 @@ static int zend_implement_traversable(zend_class_entry *interface, zend_class_en
 	/* check that class_type is traversable at c-level or implements at least one of 'aggregate' and 'Iterator' */
 	uint32_t i;
 
-	if (class_type->get_iterator || (class_type->parent && class_type->parent->get_iterator)) {
+	if (class_type->get_iterator || (class_type->parent && class_type->parent->ce->get_iterator)) {
 		return SUCCESS;
 	}
 	if (class_type->num_interfaces) {
@@ -343,8 +343,8 @@ static int zend_implement_aggregate(zend_class_entry *interface, zend_class_entr
 		}
 	}
 	if (class_type->parent
-	 && (class_type->parent->ce_flags & ZEND_ACC_REUSE_GET_ITERATOR)) {
-		class_type->get_iterator = class_type->parent->get_iterator;
+	 && (class_type->parent->ce->ce_flags & ZEND_ACC_REUSE_GET_ITERATOR)) {
+		class_type->get_iterator = class_type->parent->ce->get_iterator;
 		class_type->ce_flags |= ZEND_ACC_REUSE_GET_ITERATOR;
 	} else {
 		class_type->get_iterator = zend_user_it_get_new_iterator;
@@ -390,8 +390,8 @@ static int zend_implement_iterator(zend_class_entry *interface, zend_class_entry
 		}
 	}
 	if (class_type->parent
-	 && (class_type->parent->ce_flags & ZEND_ACC_REUSE_GET_ITERATOR)) {
-		class_type->get_iterator = class_type->parent->get_iterator;
+	 && (class_type->parent->ce->ce_flags & ZEND_ACC_REUSE_GET_ITERATOR)) {
+		class_type->get_iterator = class_type->parent->ce->get_iterator;
 		class_type->ce_flags |= ZEND_ACC_REUSE_GET_ITERATOR;
 	} else {
 		class_type->get_iterator = zend_user_it_get_iterator;
@@ -511,8 +511,8 @@ ZEND_API int zend_class_unserialize_deny(zval *object, zend_class_entry *ce, con
 static int zend_implement_serializable(zend_class_entry *interface, zend_class_entry *class_type)
 {
 	if (class_type->parent
-		&& (class_type->parent->serialize || class_type->parent->unserialize)
-		&& !zend_class_implements_interface(class_type->parent, zend_ce_serializable)) {
+		&& (class_type->parent->ce->serialize || class_type->parent->ce->unserialize)
+		&& !zend_class_implements_interface(class_type->parent->ce, zend_ce_serializable)) {
 		return FAILURE;
 	}
 	if (!class_type->serialize) {

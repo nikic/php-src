@@ -211,7 +211,7 @@ static zend_object *spl_array_object_new_ex(zend_class_entry *class_type, zend_o
 			intern->std.handlers = &spl_handler_ArrayObject;
 			break;
 		}
-		parent = parent->parent;
+		parent = parent->parent ? parent->parent->ce : NULL;
 		inherited = 1;
 	}
 	if (!parent) { /* this must never happen */

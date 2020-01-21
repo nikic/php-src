@@ -1304,7 +1304,7 @@ check_fetch_type:
 			if (UNEXPECTED(!scope->parent)) {
 				zend_throw_or_error(fetch_type, NULL, "Cannot access parent:: when current class scope has no parent");
 			}
-			return scope->parent;
+			return scope->parent->ce;
 		case ZEND_FETCH_CLASS_STATIC:
 			ce = zend_get_called_scope(EG(current_execute_data));
 			if (UNEXPECTED(!ce)) {

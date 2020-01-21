@@ -1157,7 +1157,7 @@ static zend_string *resolve_class_name(
 		if (zend_string_equals_literal_ci(name, "self")) {
 			name = scope->name;
 		} else if (zend_string_equals_literal_ci(name, "parent") && scope->parent) {
-			name = scope->parent->name;
+			name = scope->parent->ce->name;
 		}
 	}
 	return name;
@@ -1217,7 +1217,7 @@ static zend_string *zend_type_to_string_impl(
 				zend_string_release(name);
 			} else {
 				uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(*list_type);
-				generic_param_id -= scope->num_parent_generic_args;
+				generic_param_id -= scope->num_bound_generic_args;
 				zend_generic_param *param = &scope->generic_params[generic_param_id];
 				str = add_type_string(str, param->name);
 			}
@@ -1231,7 +1231,7 @@ static zend_string *zend_type_to_string_impl(
 		str = zend_class_ref_to_string(ce_ref);
 	} else if (ZEND_TYPE_HAS_GENERIC_PARAM(type)) {
 		uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(type);
-		generic_param_id -= scope->num_parent_generic_args;
+		generic_param_id -= scope->num_bound_generic_args;
 		zend_generic_param *param = &scope->generic_params[generic_param_id];
 		str = zend_string_copy(param->name);
 	}
@@ -1587,19 +1587,35 @@ static zend_string *zend_resolve_const_class_name_reference(zend_ast *class_ast,
 static zend_type zend_compile_typename(
 		zend_ast *ast, zend_bool force_allow_null, zend_bool use_arena);
 
-static zend_type *zend_compile_generic_args(zend_ast *args_ast, uint32_t *num_args) {
-	zend_ast_list *list = zend_ast_get_list(args_ast);
-	zend_type *types = emalloc(sizeof(zend_type) * list->children);
-	*num_args = list->children;
-	for (uint32_t i = 0; i < list->children; i++) {
-		zend_ast *type_ast = list->child[i];
-		types[i] = zend_compile_typename(type_ast, 0, 0);
+static zend_name_reference *zend_compile_name_reference(
+		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
+	zend_ast_list *list = args_ast ? zend_ast_get_list(args_ast) : NULL;
+	uint32_t num_types = list ? list->children : 0;
+	size_t alloc_size = ZEND_CLASS_REF_SIZE(num_types);
+	zend_name_reference *ref =
+		use_arena ? zend_arena_alloc(&CG(arena), alloc_size) : emalloc(alloc_size);
+	ref->name = name;
+	ref->args.num_types = num_types;
+	if (list) {
+		for (uint32_t i = 0; i < num_types; i++) {
+			zend_ast *type_ast = list->child[i];
+			ref->args.types[i] = zend_compile_typename(type_ast, 0, 0);
+		}
 	}
-	return types;
+	return ref;
 }
 
-static zend_string *zend_compile_const_class_name_reference(
-		zend_ast *class_ast, const char *type, uint32_t *num_generic_args, zend_type **generic_args) {
+static zend_packed_name_reference zend_compile_pnr(
+		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
+	if (args_ast) {
+		return ZEND_PNR_ENCODE_REF(zend_compile_name_reference(name, args_ast, use_arena));
+	} else {
+		return ZEND_PNR_ENCODE_NAME(name);
+	}
+}
+
+static zend_name_reference *zend_compile_default_name_reference(
+		zend_ast *class_ast, const char *type) {
 	zend_ast *name_ast = class_ast->child[0];
 	zend_string *class_name = zend_ast_get_str(name_ast);
 	if (ZEND_FETCH_CLASS_DEFAULT != zend_get_class_fetch_type_ast(name_ast)) {
@@ -1608,13 +1624,7 @@ static zend_string *zend_compile_const_class_name_reference(
 			ZSTR_VAL(class_name), type);
 	}
 	class_name = zend_resolve_class_name(class_name, name_ast->attr);
-	if (class_ast->child[1]) {
-		*generic_args = zend_compile_generic_args(class_ast->child[1], num_generic_args);
-	} else {
-		*num_generic_args = 0;
-		*generic_args = NULL;
-	}
-	return class_name;
+	return zend_compile_name_reference(class_name, class_ast->child[1], /* use_arena */ 1);
 }
 
 static void zend_ensure_valid_class_fetch_type(uint32_t fetch_type) /* {{{ */
@@ -1663,7 +1673,7 @@ static zend_bool zend_try_compile_const_expr_resolve_class_name(zval *zv, zend_a
 		case ZEND_FETCH_CLASS_PARENT:
 			if (CG(active_class_entry) && CG(active_class_entry)->parent_name
 					&& zend_is_scope_known()) {
-				ZVAL_STR_COPY(zv, CG(active_class_entry)->parent_name);
+				ZVAL_STR_COPY(zv, CG(active_class_entry)->parent_name->name);
 				return 1;
 			}
 			return 0;
@@ -1694,9 +1704,9 @@ static zend_bool zend_verify_ct_const_access(zend_class_constant *c, zend_class_
 				break;
 			}
 			if (ce->ce_flags & ZEND_ACC_RESOLVED_PARENT) {
-				ce = ce->parent;
+				ce = ce->parent->ce;
 			} else {
-				ce = zend_hash_find_ptr_lc(CG(class_table), ZSTR_VAL(ce->parent_name), ZSTR_LEN(ce->parent_name));
+				ce = zend_hash_find_ptr_lc(CG(class_table), ZSTR_VAL(ce->parent_name->name), ZSTR_LEN(ce->parent_name->name));
 				if (!ce) {
 					break;
 				}
@@ -1932,7 +1942,7 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify
 		ce->interfaces = NULL;
 		ce->num_traits = 0;
 		ce->num_generic_params = 0;
-		ce->num_parent_generic_args = 0;
+		ce->num_bound_generic_args = 0;
 		ce->trait_names = NULL;
 		ce->trait_aliases = NULL;
 		ce->trait_precedences = NULL;
@@ -5597,30 +5607,6 @@ static uint32_t lookup_generic_param_id(zend_string *name) {
 	return (uint32_t) -1;
 }
 
-static zend_name_reference *zend_compile_name_reference(
-		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
-	zend_ast_list *list = zend_ast_get_list(args_ast);
-	size_t alloc_size = ZEND_CLASS_REF_SIZE(list->children);
-	zend_name_reference *ref =
-		use_arena ? zend_arena_alloc(&CG(arena), alloc_size) : emalloc(alloc_size);
-	ref->name = name;
-	ref->args.num_types = list->children;
-	for (uint32_t i = 0; i < list->children; i++) {
-		zend_ast *type_ast = list->child[i];
-		ref->args.types[i] = zend_compile_typename(type_ast, 0, 0);
-	}
-	return ref;
-}
-
-static zend_packed_name_reference zend_compile_pnr(
-		zend_string *name, zend_ast *args_ast, zend_bool use_arena) {
-	if (args_ast) {
-		return ZEND_PNR_ENCODE_REF(zend_compile_name_reference(name, args_ast, use_arena));
-	} else {
-		return ZEND_PNR_ENCODE_NAME(name);
-	}
-}
-
 static zend_type zend_compile_single_typename(zend_ast *ast, zend_bool use_arena)
 {
 	ZEND_ASSERT(!(ast->attr & ZEND_TYPE_NULLABLE));
@@ -6829,8 +6815,7 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 	}
 
 	if (extends_ast) {
-		ce->parent_name = zend_compile_const_class_name_reference(
-			extends_ast, "class name", &ce->num_parent_generic_args, &ce->parent_generic_args);
+		ce->parent_name = zend_compile_default_name_reference(extends_ast, "class name");
 		ce->ce_flags |= ZEND_ACC_INHERITED;
 	}
 
@@ -6893,7 +6878,7 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 	 && !(CG(compiler_options) & ZEND_COMPILE_PRELOAD)) {
 		if (extends_ast) {
 			zend_class_entry *parent_ce = zend_lookup_class_ex(
-				ce->parent_name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+				ce->parent_name->name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
 
 			if (parent_ce
 			 && ((parent_ce->type != ZEND_INTERNAL_CLASS) || !(CG(compiler_options) & ZEND_COMPILE_IGNORE_INTERNAL_CLASSES))
@@ -6919,7 +6904,7 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 
 	if (ce->parent_name) {
 		/* Lowercased parent name */
-		zend_string *lc_parent_name = zend_string_tolower(ce->parent_name);
+		zend_string *lc_parent_name = zend_string_tolower(ce->parent_name->name);
 		opline->op2_type = IS_CONST;
 		LITERAL_STR(opline->op2, lc_parent_name);
 	}

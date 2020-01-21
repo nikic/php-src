@@ -697,9 +697,9 @@ static ZEND_COLD void zend_verify_type_error_common(
 			smart_str_appends(&str, " (where ");
 			if (ZEND_TYPE_HAS_GENERIC_PARAM(arg_info->type)) {
 				uint32_t generic_param_id = ZEND_TYPE_GENERIC_PARAM_ID(arg_info->type);
-				generic_param_id -= scope->num_parent_generic_args;
+				generic_param_id -= scope->num_bound_generic_args;
 				zend_generic_param *param = &scope->generic_params[generic_param_id];
-				zend_type real_type = called_scope->parent_generic_args[generic_param_id];
+				zend_type real_type = called_scope->bound_generic_args[generic_param_id];
 				zend_string *real_type_string = zend_type_to_string(real_type, called_scope);
 				smart_str_append(&str, param->name);
 				smart_str_appends(&str, " = ");
@@ -963,7 +963,7 @@ static zend_class_entry *resolve_single_class_type(zend_string *name, zend_class
 		}
 		return self_ce;
 	} else if (zend_string_equals_literal_ci(name, "parent")) {
-		return self_ce->parent;
+		return self_ce->parent ? self_ce->parent->ce : NULL;
 	} else {
 		return zend_lookup_class_ex(name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
 	}
@@ -1038,8 +1038,8 @@ static zend_always_inline zend_bool i_zend_check_property_type(zend_object *obj,
 
 	if (ZEND_TYPE_HAS_GENERIC_PARAM(info->type)) {
 		uint32_t param_id = ZEND_TYPE_GENERIC_PARAM_ID(info->type);
-		ZEND_ASSERT(param_id < obj->ce->num_parent_generic_args);
-		zend_type real_type = obj->ce->parent_generic_args[param_id];
+		ZEND_ASSERT(param_id < obj->ce->num_bound_generic_args);
+		zend_type real_type = obj->ce->bound_generic_args[param_id];
 		if (ZEND_TYPE_CONTAINS_CODE(real_type, Z_TYPE_P(property))) {
 			return 1;
 		}
@@ -1115,8 +1115,8 @@ static zend_always_inline zend_bool zend_check_type_slow(
 		// TODO: This doesn't handle free generic parameters.
 		uint32_t param_id = ZEND_TYPE_GENERIC_PARAM_ID(type);
 		zend_class_entry *called_scope = zend_get_called_scope(EG(current_execute_data));
-		ZEND_ASSERT(param_id < called_scope->num_parent_generic_args);
-		zend_type real_type = called_scope->parent_generic_args[param_id];
+		ZEND_ASSERT(param_id < called_scope->num_bound_generic_args);
+		zend_type real_type = called_scope->bound_generic_args[param_id];
 		if (ZEND_TYPE_CONTAINS_CODE(real_type, Z_TYPE_P(arg))) {
 			return 1;
 		}
@@ -1150,8 +1150,8 @@ static zend_always_inline zend_bool zend_check_type_slow(
 				// TODO: Deduplicate this code.
 				uint32_t param_id = ZEND_TYPE_GENERIC_PARAM_ID(*list_type);
 				zend_class_entry *called_scope = zend_get_called_scope(EG(current_execute_data));
-				ZEND_ASSERT(param_id < called_scope->num_parent_generic_args);
-				zend_type real_type = called_scope->parent_generic_args[param_id];
+				ZEND_ASSERT(param_id < called_scope->num_bound_generic_args);
+				zend_type real_type = called_scope->bound_generic_args[param_id];
 				if (ZEND_TYPE_CONTAINS_CODE(real_type, Z_TYPE_P(arg))) {
 					return 1;
 				}

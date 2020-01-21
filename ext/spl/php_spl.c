@@ -85,7 +85,8 @@ static zend_class_entry * spl_find_ce_by_name(zend_string *name, zend_bool autol
 PHP_FUNCTION(class_parents)
 {
 	zval *obj;
-	zend_class_entry *parent_class, *ce;
+	zend_class_entry *ce;
+	zend_class_reference *parent_class;
 	zend_bool autoload = 1;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|b", &obj, &autoload) == FAILURE) {
@@ -108,8 +109,8 @@ PHP_FUNCTION(class_parents)
 	array_init(return_value);
 	parent_class = ce->parent;
 	while (parent_class) {
-		spl_add_class_name(return_value, parent_class, 0, 0);
-		parent_class = parent_class->parent;
+		spl_add_class_name(return_value, parent_class->ce, 0, 0);
+		parent_class = parent_class->ce->parent;
 	}
 }
 /* }}} */
