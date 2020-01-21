@@ -227,9 +227,8 @@ void spl_object_storage_addall(spl_SplObjectStorage *intern, spl_SplObjectStorag
 static zend_object *spl_object_storage_new_ex(zend_class_entry *class_type, zend_object *orig) /* {{{ */
 {
 	spl_SplObjectStorage *intern;
-	zend_class_entry *parent = class_type;
 
-	intern = emalloc(sizeof(spl_SplObjectStorage) + zend_object_properties_size(parent));
+	intern = emalloc(sizeof(spl_SplObjectStorage) + zend_object_properties_size(class_type));
 	memset(intern, 0, sizeof(spl_SplObjectStorage) - sizeof(zval));
 	intern->pos = 0;
 
@@ -240,18 +239,12 @@ static zend_object *spl_object_storage_new_ex(zend_class_entry *class_type, zend
 
 	intern->std.handlers = &spl_handler_SplObjectStorage;
 
-	while (parent) {
-		if (parent == spl_ce_SplObjectStorage) {
-			if (class_type != spl_ce_SplObjectStorage) {
-				intern->fptr_get_hash = zend_hash_str_find_ptr(&class_type->function_table, "gethash", sizeof("gethash") - 1);
-				if (intern->fptr_get_hash->common.scope == spl_ce_SplObjectStorage) {
-					intern->fptr_get_hash = NULL;
-				}
-			}
-			break;
+	if (class_type != spl_ce_SplObjectStorage
+			&& zend_class_entry_get_root(class_type) == spl_ce_SplObjectStorage) {
+		intern->fptr_get_hash = zend_hash_str_find_ptr(&class_type->function_table, "gethash", sizeof("gethash") - 1);
+		if (intern->fptr_get_hash->common.scope == spl_ce_SplObjectStorage) {
+			intern->fptr_get_hash = NULL;
 		}
-
-		parent = parent->parent ? parent->parent->ce : NULL;
 	}
 
 	if (orig) {

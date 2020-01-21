@@ -551,12 +551,12 @@ ZEND_API int ZEND_FASTCALL zend_ast_evaluate(zval *result, zend_ast *ast, zend_c
 			if (ast->attr == ZEND_FETCH_CLASS_SELF) {
 				ZVAL_STR_COPY(result, scope->name);
 			} else if (ast->attr == ZEND_FETCH_CLASS_PARENT) {
-				if (!scope->parent) {
+				if (!scope->num_parents) {
 					zend_throw_error(NULL,
 						"Cannot use \"parent\" when current class scope has no parent");
 					return FAILURE;
 				}
-				ZVAL_STR_COPY(result, scope->parent->ce->name);
+				ZVAL_STR_COPY(result, scope->parents[0]->ce->name);
 			} else {
 				ZEND_ASSERT(0 && "Should have errored during compilation");
 			}

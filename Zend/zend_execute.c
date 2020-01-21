@@ -963,7 +963,7 @@ static zend_class_entry *resolve_single_class_type(zend_string *name, zend_class
 		}
 		return self_ce;
 	} else if (zend_string_equals_literal_ci(name, "parent")) {
-		return self_ce->parent ? self_ce->parent->ce : NULL;
+		return self_ce->num_parents ? self_ce->parents[0]->ce : NULL;
 	} else {
 		return zend_lookup_class_ex(name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
 	}

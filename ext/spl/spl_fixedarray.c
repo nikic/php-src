@@ -203,11 +203,10 @@ zend_object_iterator *spl_fixedarray_get_iterator(zend_class_entry *ce, zval *ob
 static zend_object *spl_fixedarray_object_new_ex(zend_class_entry *class_type, zend_object *orig, int clone_orig) /* {{{ */
 {
 	spl_fixedarray_object *intern;
-	zend_class_entry     *parent = class_type;
 	int                   inherited = 0;
 	zend_class_iterator_funcs *funcs_ptr;
 
-	intern = zend_object_alloc(sizeof(spl_fixedarray_object), parent);
+	intern = zend_object_alloc(sizeof(spl_fixedarray_object), class_type);
 
 	zend_object_std_init(&intern->std, class_type);
 	object_properties_init(&intern->std, class_type);
@@ -222,19 +221,8 @@ static zend_object *spl_fixedarray_object_new_ex(zend_class_entry *class_type, z
 		spl_fixedarray_copy(&intern->array, &other->array);
 	}
 
-	while (parent) {
-		if (parent == spl_ce_SplFixedArray) {
-			intern->std.handlers = &spl_handler_SplFixedArray;
-			break;
-		}
-
-		parent = parent->parent ? parent->parent->ce : NULL;
-		inherited = 1;
-	}
-
-	if (!parent) { /* this must never happen */
-		php_error_docref(NULL, E_COMPILE_ERROR, "Internal compiler error, Class is not child of SplFixedArray");
-	}
+	intern->std.handlers = &spl_handler_SplFixedArray;
+	inherited = class_type != spl_ce_SplFixedArray;
 
 	funcs_ptr = class_type->iterator_funcs_ptr;
 	if (!funcs_ptr->zf_current) {
@@ -245,40 +233,40 @@ static zend_object *spl_fixedarray_object_new_ex(zend_class_entry *class_type, z
 		funcs_ptr->zf_next = zend_hash_str_find_ptr(&class_type->function_table, "next", sizeof("next") - 1);
 	}
 	if (inherited) {
-		if (funcs_ptr->zf_rewind->common.scope  != parent) {
+		if (funcs_ptr->zf_rewind->common.scope  != spl_ce_SplFixedArray) {
 			intern->flags |= SPL_FIXEDARRAY_OVERLOADED_REWIND;
 		}
-		if (funcs_ptr->zf_valid->common.scope   != parent) {
+		if (funcs_ptr->zf_valid->common.scope   != spl_ce_SplFixedArray) {
 			intern->flags |= SPL_FIXEDARRAY_OVERLOADED_VALID;
 		}
-		if (funcs_ptr->zf_key->common.scope     != parent) {
+		if (funcs_ptr->zf_key->common.scope     != spl_ce_SplFixedArray) {
 			intern->flags |= SPL_FIXEDARRAY_OVERLOADED_KEY;
 		}
-		if (funcs_ptr->zf_current->common.scope != parent) {
+		if (funcs_ptr->zf_current->common.scope != spl_ce_SplFixedArray) {
 			intern->flags |= SPL_FIXEDARRAY_OVERLOADED_CURRENT;
 		}
-		if (funcs_ptr->zf_next->common.scope    != parent) {
+		if (funcs_ptr->zf_next->common.scope    != spl_ce_SplFixedArray) {
 			intern->flags |= SPL_FIXEDARRAY_OVERLOADED_NEXT;
 		}
 
 		intern->fptr_offset_get = zend_hash_str_find_ptr(&class_type->function_table, "offsetget", sizeof("offsetget") - 1);
-		if (intern->fptr_offset_get->common.scope == parent) {
+		if (intern->fptr_offset_get->common.scope == spl_ce_SplFixedArray) {
 			intern->fptr_offset_get = NULL;
 		}
 		intern->fptr_offset_set = zend_hash_str_find_ptr(&class_type->function_table, "offsetset", sizeof("offsetset") - 1);
-		if (intern->fptr_offset_set->common.scope == parent) {
+		if (intern->fptr_offset_set->common.scope == spl_ce_SplFixedArray) {
 			intern->fptr_offset_set = NULL;
 		}
 		intern->fptr_offset_has = zend_hash_str_find_ptr(&class_type->function_table, "offsetexists", sizeof("offsetexists") - 1);
-		if (intern->fptr_offset_has->common.scope == parent) {
+		if (intern->fptr_offset_has->common.scope == spl_ce_SplFixedArray) {
 			intern->fptr_offset_has = NULL;
 		}
 		intern->fptr_offset_del = zend_hash_str_find_ptr(&class_type->function_table, "offsetunset", sizeof("offsetunset") - 1);
-		if (intern->fptr_offset_del->common.scope == parent) {
+		if (intern->fptr_offset_del->common.scope == spl_ce_SplFixedArray) {
 			intern->fptr_offset_del = NULL;
 		}
 		intern->fptr_count = zend_hash_str_find_ptr(&class_type->function_table, "count", sizeof("count") - 1);
-		if (intern->fptr_count->common.scope == parent) {
+		if (intern->fptr_count->common.scope == spl_ce_SplFixedArray) {
 			intern->fptr_count = NULL;
 		}
 	}

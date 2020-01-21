@@ -166,10 +166,10 @@ zend_object_iterator *spl_array_get_iterator(zend_class_entry *ce, zval *object,
 static zend_object *spl_array_object_new_ex(zend_class_entry *class_type, zend_object *orig, int clone_orig)
 {
 	spl_array_object *intern;
-	zend_class_entry *parent = class_type;
+	zend_class_entry *parent;
 	int inherited = 0;
 
-	intern = zend_object_alloc(sizeof(spl_array_object), parent);
+	intern = zend_object_alloc(sizeof(spl_array_object), class_type);
 
 	zend_object_std_init(&intern->std, class_type);
 	object_properties_init(&intern->std, class_type);
@@ -203,17 +203,17 @@ static zend_object *spl_array_object_new_ex(zend_class_entry *class_type, zend_o
 		array_init(&intern->array);
 	}
 
-	while (parent) {
-		if (parent == spl_ce_ArrayIterator || parent == spl_ce_RecursiveArrayIterator) {
-			intern->std.handlers = &spl_handler_ArrayIterator;
-			break;
-		} else if (parent == spl_ce_ArrayObject) {
-			intern->std.handlers = &spl_handler_ArrayObject;
-			break;
-		}
-		parent = parent->parent ? parent->parent->ce : NULL;
-		inherited = 1;
+	parent = zend_class_entry_get_root(class_type);
+	if (parent == spl_ce_ArrayIterator) {
+		intern->std.handlers = &spl_handler_ArrayIterator;
+	} else {
+		ZEND_ASSERT(parent == spl_ce_ArrayObject);
+		intern->std.handlers = &spl_handler_ArrayObject;
 	}
+	inherited = class_type != spl_ce_ArrayIterator
+		&& class_type != spl_ce_ArrayObject
+		&& class_type != spl_ce_RecursiveArrayIterator;
+
 	if (!parent) { /* this must never happen */
 		php_error_docref(NULL, E_COMPILE_ERROR, "Internal compiler error, Class is not child of ArrayObject or ArrayIterator");
 	}

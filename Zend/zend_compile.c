@@ -1156,8 +1156,8 @@ static zend_string *resolve_class_name(
 	if (resolve && scope) {
 		if (zend_string_equals_literal_ci(name, "self")) {
 			name = scope->name;
-		} else if (zend_string_equals_literal_ci(name, "parent") && scope->parent) {
-			name = scope->parent->ce->name;
+		} else if (zend_string_equals_literal_ci(name, "parent") && scope->num_parents) {
+			name = scope->parents[0]->ce->name;
 		}
 	}
 	return name;
@@ -1614,7 +1614,7 @@ static zend_packed_name_reference zend_compile_pnr(
 	}
 }
 
-static zend_name_reference *zend_compile_default_name_reference(
+static zend_packed_name_reference zend_compile_default_pnr(
 		zend_ast *class_ast, const char *type) {
 	zend_ast *name_ast = class_ast->child[0];
 	zend_string *class_name = zend_ast_get_str(name_ast);
@@ -1624,7 +1624,7 @@ static zend_name_reference *zend_compile_default_name_reference(
 			ZSTR_VAL(class_name), type);
 	}
 	class_name = zend_resolve_class_name(class_name, name_ast->attr);
-	return zend_compile_name_reference(class_name, class_ast->child[1], /* use_arena */ 1);
+	return zend_compile_pnr(class_name, class_ast->child[1], /* use_arena */ 0);
 }
 
 static void zend_ensure_valid_class_fetch_type(uint32_t fetch_type) /* {{{ */
@@ -1671,9 +1671,9 @@ static zend_bool zend_try_compile_const_expr_resolve_class_name(zval *zv, zend_a
 			}
 			return 0;
 		case ZEND_FETCH_CLASS_PARENT:
-			if (CG(active_class_entry) && CG(active_class_entry)->parent_name
+			if (CG(active_class_entry) && CG(active_class_entry)->num_parents
 					&& zend_is_scope_known()) {
-				ZVAL_STR_COPY(zv, CG(active_class_entry)->parent_name->name);
+				ZVAL_STR_COPY(zv, ZEND_PNR_GET_NAME(CG(active_class_entry)->parent_name));
 				return 1;
 			}
 			return 0;
@@ -1700,13 +1700,14 @@ static zend_bool zend_verify_ct_const_access(zend_class_constant *c, zend_class_
 			if (ce == scope) {
 				return 1;
 			}
-			if (!ce->parent) {
+			if (!ce->num_parents) {
 				break;
 			}
 			if (ce->ce_flags & ZEND_ACC_RESOLVED_PARENT) {
-				ce = ce->parent->ce;
+				ce = ce->parents[0]->ce;
 			} else {
-				ce = zend_hash_find_ptr_lc(CG(class_table), ZSTR_VAL(ce->parent_name->name), ZSTR_LEN(ce->parent_name->name));
+				zend_string *parent_name = ZEND_PNR_GET_NAME(ce->parent_name);
+				ce = zend_hash_find_ptr_lc(CG(class_table), ZSTR_VAL(parent_name), ZSTR_LEN(parent_name));
 				if (!ce) {
 					break;
 				}
@@ -1936,8 +1937,8 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify
 		ce->get_iterator = NULL;
 		ce->iterator_funcs_ptr = NULL;
 		ce->get_static_method = NULL;
-		ce->parent = NULL;
-		ce->parent_name = NULL;
+		ce->num_parents = 0;
+		ce->parent_name = 0;
 		ce->num_interfaces = 0;
 		ce->interfaces = NULL;
 		ce->num_traits = 0;
@@ -6815,7 +6816,8 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 	}
 
 	if (extends_ast) {
-		ce->parent_name = zend_compile_default_name_reference(extends_ast, "class name");
+		ce->parent_name = zend_compile_default_pnr(extends_ast, "class name");
+		ce->num_parents = 1;
 		ce->ce_flags |= ZEND_ACC_INHERITED;
 	}
 
@@ -6878,7 +6880,7 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 	 && !(CG(compiler_options) & ZEND_COMPILE_PRELOAD)) {
 		if (extends_ast) {
 			zend_class_entry *parent_ce = zend_lookup_class_ex(
-				ce->parent_name->name, NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
+				ZEND_PNR_GET_NAME(ce->parent_name), NULL, ZEND_FETCH_CLASS_NO_AUTOLOAD);
 
 			if (parent_ce
 			 && ((parent_ce->type != ZEND_INTERNAL_CLASS) || !(CG(compiler_options) & ZEND_COMPILE_IGNORE_INTERNAL_CLASSES))
@@ -6904,7 +6906,7 @@ zend_op *zend_compile_class_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 
 	if (ce->parent_name) {
 		/* Lowercased parent name */
-		zend_string *lc_parent_name = zend_string_tolower(ce->parent_name->name);
+		zend_string *lc_parent_name = zend_string_tolower(ZEND_PNR_GET_NAME(ce->parent_name));
 		opline->op2_type = IS_CONST;
 		LITERAL_STR(opline->op2, lc_parent_name);
 	}

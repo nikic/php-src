@@ -386,10 +386,10 @@ static void spl_heap_object_free_storage(zend_object *object) /* {{{ */
 static zend_object *spl_heap_object_new_ex(zend_class_entry *class_type, zend_object *orig, int clone_orig) /* {{{ */
 {
 	spl_heap_object   *intern;
-	zend_class_entry  *parent = class_type;
+	zend_class_entry  *parent;
 	int                inherited = 0;
 
-	intern = zend_object_alloc(sizeof(spl_heap_object), parent);
+	intern = zend_object_alloc(sizeof(spl_heap_object), class_type);
 
 	zend_object_std_init(&intern->std, class_type);
 	object_properties_init(&intern->std, class_type);
@@ -411,29 +411,24 @@ static zend_object *spl_heap_object_new_ex(zend_class_entry *class_type, zend_ob
 		return &intern->std;
 	}
 
-	while (parent) {
-		if (parent == spl_ce_SplPriorityQueue) {
-			intern->heap = spl_ptr_heap_init(spl_ptr_pqueue_elem_cmp, spl_ptr_heap_pqueue_elem_ctor, spl_ptr_heap_pqueue_elem_dtor, sizeof(spl_pqueue_elem));
-			intern->std.handlers = &spl_handler_SplPriorityQueue;
-			intern->flags = SPL_PQUEUE_EXTR_DATA;
-			break;
+	parent = zend_class_entry_get_root(class_type);
+	inherited = class_type != spl_ce_SplPriorityQueue
+		&& class_type != spl_ce_SplMinHeap && spl_ce_SplMaxHeap;
+	if (parent == spl_ce_SplPriorityQueue) {
+		intern->heap = spl_ptr_heap_init(spl_ptr_pqueue_elem_cmp, spl_ptr_heap_pqueue_elem_ctor, spl_ptr_heap_pqueue_elem_dtor, sizeof(spl_pqueue_elem));
+		intern->std.handlers = &spl_handler_SplPriorityQueue;
+		intern->flags = SPL_PQUEUE_EXTR_DATA;
+	} else {
+		ZEND_ASSERT(parent == spl_ce_SplHeap);
+		if (instanceof_function(class_type, spl_ce_SplMinHeap)) {
+			parent = spl_ce_SplMinHeap;
+		} else if (instanceof_function(class_type, spl_ce_SplMaxHeap)) {
+			parent = spl_ce_SplMaxHeap;
 		}
-
-		if (parent == spl_ce_SplMinHeap || parent == spl_ce_SplMaxHeap
-				|| parent == spl_ce_SplHeap) {
-			intern->heap = spl_ptr_heap_init(
-				parent == spl_ce_SplMinHeap ? spl_ptr_heap_zval_min_cmp : spl_ptr_heap_zval_max_cmp,
-				spl_ptr_heap_zval_ctor, spl_ptr_heap_zval_dtor, sizeof(zval));
-			intern->std.handlers = &spl_handler_SplHeap;
-			break;
-		}
-
-		parent = parent->parent ? parent->parent->ce : NULL;
-		inherited = 1;
-	}
-
-	if (!parent) { /* this must never happen */
-		php_error_docref(NULL, E_COMPILE_ERROR, "Internal compiler error, Class is not child of SplHeap");
+		intern->heap = spl_ptr_heap_init(
+			parent == spl_ce_SplMinHeap ? spl_ptr_heap_zval_min_cmp : spl_ptr_heap_zval_max_cmp,
+			spl_ptr_heap_zval_ctor, spl_ptr_heap_zval_dtor, sizeof(zval));
+		intern->std.handlers = &spl_handler_SplHeap;
 	}
 
 	if (inherited) {

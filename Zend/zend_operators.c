@@ -2194,16 +2194,15 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_function_slow(const zend_class_entry
 		}
 		return 0;
 	} else {
-		while (1) {
-			zend_class_reference *parent_ref = instance_ce->parent;
-			if (parent_ref == NULL) {
-				return 0;
-			}
-			instance_ce = parent_ref->ce;
-			if (instance_ce == ce) {
-				return 1;
+		if (instance_ce->num_parents) {
+			for (uint32_t i = 0; i < instance_ce->num_parents; i++) {
+				zend_class_reference *parent_ref = instance_ce->parents[i];
+				if (parent_ref->ce == ce) {
+					return 1;
+				}
 			}
 		}
+		return 0;
 	}
 }
 /* }}} */
@@ -2226,16 +2225,20 @@ static zend_always_inline zend_bool zend_type_lists_compatible(
 }
 
 ZEND_API zend_bool ZEND_FASTCALL instanceof_unpacked_slow(
-		const zend_class_reference *ce_ref, const zend_class_entry *ce, const zend_type_list *args) {
+		const zend_class_reference *instance_ref, const zend_class_entry *ce, const zend_type_list *args) {
+	zend_class_entry *instance_ce = instance_ref->ce;
 	if (ce->ce_flags & ZEND_ACC_INTERFACE) {
-		return instanceof_function(ce_ref->ce, ce);
+		return instanceof_function(instance_ce, ce);
 	} else {
-		do {
-			if (ce_ref->ce == ce && zend_type_lists_compatible(&ce_ref->args, args)) {
+		if (instance_ce == ce && zend_type_lists_compatible(&instance_ref->args, args)) {
+			return 1;
+		}
+		for (uint32_t i = 0; i < instance_ce->num_parents; i++) {
+			zend_class_reference *parent_ref = instance_ce->parents[i];
+			if (parent_ref->ce == ce && zend_type_lists_compatible(&parent_ref->args, args)) {
 				return 1;
 			}
-			ce_ref = ce_ref->ce->parent;
-		} while (ce_ref);
+		}
 		return 0;
 	}
 }

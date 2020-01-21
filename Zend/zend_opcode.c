@@ -304,8 +304,20 @@ ZEND_API void destroy_zend_class(zval *zv)
 	}
 	switch (ce->type) {
 		case ZEND_USER_CLASS:
-			if (ce->parent_name && !(ce->ce_flags & ZEND_ACC_RESOLVED_PARENT)) {
-				zend_name_reference_release(ce->parent_name, /* uses_arena */ 1, 0);
+			if (ce->num_parents) {
+				if (!(ce->ce_flags & ZEND_ACC_RESOLVED_PARENT)) {
+					zend_pnr_release(ce->parent_name, /* uses_arena */ 0, /* persistent */ 0);
+				} else {
+					for (uint32_t i = 0; i < ce->num_parents; i++) {
+						zend_class_reference *ref = ce->parents[i];
+						if (!ZEND_REF_IS_TRIVIAL(ref)) {
+							/* The type arguments are owned by bound_generic_args,
+							 * and will be destroyed there. */
+							efree(ref);
+						}
+					}
+					efree(ce->parents);
+				}
 			}
 			if (ce->default_properties_table) {
 				zval *p = ce->default_properties_table;
@@ -398,6 +410,9 @@ ZEND_API void destroy_zend_class(zval *zv)
 
 			break;
 		case ZEND_INTERNAL_CLASS:
+			if (ce->num_parents) {
+				free(ce->parents);
+			}
 			if (ce->default_properties_table) {
 				zval *p = ce->default_properties_table;
 				zval *end = p + ce->default_properties_count;

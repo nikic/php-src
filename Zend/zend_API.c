@@ -1034,8 +1034,8 @@ ZEND_API int zend_update_class_constants(zend_class_entry *class_type) /* {{{ */
 		zval *val;
 		zend_property_info *prop_info;
 
-		if (class_type->parent) {
-			if (UNEXPECTED(zend_update_class_constants(class_type->parent->ce) != SUCCESS)) {
+		if (class_type->num_parents) {
+			if (UNEXPECTED(zend_update_class_constants(class_type->parents[0]->ce) != SUCCESS)) {
 				return FAILURE;
 			}
 		}
@@ -1071,7 +1071,7 @@ ZEND_API int zend_update_class_constants(zend_class_entry *class_type) /* {{{ */
 						return FAILURE;
 					}
 					/* property initializers must always be evaluated with strict types */;
-					if (UNEXPECTED(!zend_verify_property_type(prop_info, &tmp, /* strict */ 1))) {
+					if (UNEXPECTED(!zend_verify_property_type(NULL, prop_info, &tmp, /* strict */ 1))) {
 						zval_ptr_dtor(&tmp);
 						return FAILURE;
 					}
@@ -2744,11 +2744,11 @@ static int zend_is_callable_check_class(zend_string *name, zend_class_entry *sco
 	} else if (zend_string_equals_literal(lcname, "parent")) {
 		if (!scope) {
 			if (error) *error = estrdup("cannot access parent:: when no class scope is active");
-		} else if (!scope->parent) {
+		} else if (!scope->num_parents) {
 			if (error) *error = estrdup("cannot access parent:: when current class scope has no parent");
 		} else {
 			fcc->called_scope = zend_get_called_scope(EG(current_execute_data));
-			fcc->calling_scope = scope->parent->ce;
+			fcc->calling_scope = scope->parents[0]->ce;
 			if (!fcc->object) {
 				fcc->object = zend_get_this_object(EG(current_execute_data));
 			}

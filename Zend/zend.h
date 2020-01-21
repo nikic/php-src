@@ -116,13 +116,19 @@ typedef struct _zend_generic_param {
 struct _zend_class_entry {
 	char type;
 	zend_string *name;
-	/* class_entry or string depending on ZEND_ACC_LINKED */
-	union {
-		zend_class_reference *parent;
-		zend_name_reference *parent_name;
-	};
 	int refcount;
 	uint32_t ce_flags;
+
+	/* Before inheritance, this is either zero or one.
+	 * After inheritance it includes grandparents as well. */
+	uint32_t num_parents;
+	union {
+		/* List of parents. The direct parent is parents[0],
+		 * below that are inherited grandparents. */
+		zend_class_reference **parents;
+		/* Before linking, only the name of the direct parent is stored. */
+		zend_packed_name_reference parent_name;
+	};
 
 	int default_properties_count;
 	int default_static_members_count;

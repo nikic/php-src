@@ -366,10 +366,9 @@ zend_object_iterator *spl_dllist_get_iterator(zend_class_entry *ce, zval *object
 static zend_object *spl_dllist_object_new_ex(zend_class_entry *class_type, zend_object *orig, int clone_orig) /* {{{ */
 {
 	spl_dllist_object *intern;
-	zend_class_entry  *parent = class_type;
 	int                inherited = 0;
 
-	intern = zend_object_alloc(sizeof(spl_dllist_object), parent);
+	intern = zend_object_alloc(sizeof(spl_dllist_object), class_type);
 
 	zend_object_std_init(&intern->std, class_type);
 	object_properties_init(&intern->std, class_type);
@@ -399,46 +398,34 @@ static zend_object *spl_dllist_object_new_ex(zend_class_entry *class_type, zend_
 		SPL_LLIST_CHECK_ADDREF(intern->traverse_pointer);
 	}
 
-	while (parent) {
-		if (parent == spl_ce_SplStack) {
-			intern->flags |= (SPL_DLLIST_IT_FIX | SPL_DLLIST_IT_LIFO);
-			intern->std.handlers = &spl_handler_SplDoublyLinkedList;
-		} else if (parent == spl_ce_SplQueue) {
-			intern->flags |= SPL_DLLIST_IT_FIX;
-			intern->std.handlers = &spl_handler_SplDoublyLinkedList;
-		}
-
-		if (parent == spl_ce_SplDoublyLinkedList) {
-			intern->std.handlers = &spl_handler_SplDoublyLinkedList;
-			break;
-		}
-
-		parent = parent->parent ? parent->parent->ce : NULL;
-		inherited = 1;
+	intern->std.handlers = &spl_handler_SplDoublyLinkedList;
+	inherited = class_type != spl_ce_SplDoublyLinkedList
+		&& class_type != spl_ce_SplStack && class_type != spl_ce_SplQueue;
+	if (instanceof_function(class_type, spl_ce_SplStack)) {
+		intern->flags |= (SPL_DLLIST_IT_FIX | SPL_DLLIST_IT_LIFO);
+	} else if (instanceof_function(class_type, spl_ce_SplQueue)) {
+		intern->flags |= SPL_DLLIST_IT_FIX;
 	}
 
-	if (!parent) { /* this must never happen */
-		php_error_docref(NULL, E_COMPILE_ERROR, "Internal compiler error, Class is not child of SplDoublyLinkedList");
-	}
 	if (inherited) {
 		intern->fptr_offset_get = zend_hash_str_find_ptr(&class_type->function_table, "offsetget", sizeof("offsetget") - 1);
-		if (intern->fptr_offset_get->common.scope == parent) {
+		if (intern->fptr_offset_get->common.scope == spl_ce_SplDoublyLinkedList) {
 			intern->fptr_offset_get = NULL;
 		}
 		intern->fptr_offset_set = zend_hash_str_find_ptr(&class_type->function_table, "offsetset", sizeof("offsetset") - 1);
-		if (intern->fptr_offset_set->common.scope == parent) {
+		if (intern->fptr_offset_set->common.scope == spl_ce_SplDoublyLinkedList) {
 			intern->fptr_offset_set = NULL;
 		}
 		intern->fptr_offset_has = zend_hash_str_find_ptr(&class_type->function_table, "offsetexists", sizeof("offsetexists") - 1);
-		if (intern->fptr_offset_has->common.scope == parent) {
+		if (intern->fptr_offset_has->common.scope == spl_ce_SplDoublyLinkedList) {
 			intern->fptr_offset_has = NULL;
 		}
 		intern->fptr_offset_del = zend_hash_str_find_ptr(&class_type->function_table, "offsetunset", sizeof("offsetunset") - 1);
-		if (intern->fptr_offset_del->common.scope == parent) {
+		if (intern->fptr_offset_del->common.scope == spl_ce_SplDoublyLinkedList) {
 			intern->fptr_offset_del = NULL;
 		}
 		intern->fptr_count = zend_hash_str_find_ptr(&class_type->function_table, "count", sizeof("count") - 1);
-		if (intern->fptr_count->common.scope == parent) {
+		if (intern->fptr_count->common.scope == spl_ce_SplDoublyLinkedList) {
 			intern->fptr_count = NULL;
 		}
 	}

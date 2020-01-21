@@ -128,7 +128,7 @@ static zend_always_inline zend_function *zend_duplicate_function(zend_function *
 
 static void do_inherit_parent_constructor(zend_class_entry *ce) /* {{{ */
 {
-	zend_class_entry *parent = ce->parent->ce;
+	zend_class_entry *parent = ce->parents[0]->ce;
 
 	ZEND_ASSERT(parent != NULL);
 
@@ -214,11 +214,11 @@ char *zend_visibility_string(uint32_t fn_flags) /* {{{ */
 
 static zend_string *resolve_class_name(zend_class_entry *scope, zend_string *name) {
 	ZEND_ASSERT(scope);
-	if (zend_string_equals_literal_ci(name, "parent") && scope->parent) {
+	if (zend_string_equals_literal_ci(name, "parent") && scope->num_parents) {
 		if (scope->ce_flags & ZEND_ACC_RESOLVED_PARENT) {
-			return scope->parent->ce->name;
+			return scope->parents[0]->ce->name;
 		} else {
-			return scope->parent_name->name;
+			return ZEND_PNR_GET_NAME(scope->parent_name);
 		}
 	} else if (zend_string_equals_literal_ci(name, "self")) {
 		return scope->name;
@@ -283,11 +283,11 @@ static zend_bool unlinked_instanceof(zend_class_entry *ce1, zend_class_entry *ce
 	}
 
 	ce = ce1;
-	while (ce->parent) {
+	while (ce->num_parents) {
 		if (ce->ce_flags & ZEND_ACC_RESOLVED_PARENT) {
-			ce = ce->parent->ce;
+			ce = ce->parents[0]->ce;
 		} else {
-			ce = zend_lookup_class_ex(ce->parent_name->name, NULL,
+			ce = zend_lookup_class_ex(ZEND_PNR_GET_NAME(ce->parent_name), NULL,
 				ZEND_FETCH_CLASS_ALLOW_UNLINKED | ZEND_FETCH_CLASS_NO_AUTOLOAD);
 			if (!ce) {
 				break;
@@ -1149,15 +1149,16 @@ void zend_build_properties_info_table(zend_class_entry *ce)
 	/* Dead slots may be left behind during inheritance. Make sure these are NULLed out. */
 	memset(table, 0, size);
 
-	if (ce->parent && ce->parent->ce->default_properties_count != 0) {
-		zend_property_info **parent_table = ce->parent->ce->properties_info_table;
+	if (ce->num_parents && ce->parents[0]->ce->default_properties_count != 0) {
+		zend_class_entry *parent_ce = ce->parents[0]->ce;
+		zend_property_info **parent_table = parent_ce->properties_info_table;
 		memcpy(
 			table, parent_table,
-			sizeof(zend_property_info *) * ce->parent->ce->default_properties_count
+			sizeof(zend_property_info *) * parent_ce->default_properties_count
 		);
 
 		/* Child did not add any new properties, we are done */
-		if (ce->default_properties_count == ce->parent->ce->default_properties_count) {
+		if (ce->default_properties_count == parent_ce->default_properties_count) {
 			return;
 		}
 	}
@@ -1179,7 +1180,8 @@ static void zend_type_fixup(zend_type *type, uint32_t generic_offset) {
 	} ZEND_TYPE_FOREACH_END();
 }
 
-static void zend_bind_parent_generic_args(zend_class_entry *ce, zend_class_entry *parent_ce) {
+static void zend_bind_parent_generic_args(
+		zend_class_entry *ce, zend_class_entry *parent_ce, const zend_type_list *parent_args) {
 	uint32_t num_required_params = 0;
 	for (uint32_t i = 0; i < parent_ce->num_generic_params; i++) {
 		if (ZEND_TYPE_IS_SET(parent_ce->generic_params[i].default_type)) {
@@ -1188,20 +1190,20 @@ static void zend_bind_parent_generic_args(zend_class_entry *ce, zend_class_entry
 		num_required_params = i + 1;
 	}
 
-	if (ce->parent->args.num_types > parent_ce->num_generic_params) {
+	if (parent_args->num_types > parent_ce->num_generic_params) {
 		zend_error(E_COMPILE_ERROR,
 			"Class %s expects %s %d generic argument%s, but %d provided",
 			ZSTR_VAL(parent_ce->name),
 			num_required_params == parent_ce->num_generic_params ? "exactly" : "at most",
 			parent_ce->num_generic_params, parent_ce->num_generic_params == 1 ? "" : "s",
-			ce->parent->args.num_types);
-	} else if (ce->parent->args.num_types < num_required_params) {
+			parent_args->num_types);
+	} else if (parent_args->num_types < num_required_params) {
 		zend_error(E_COMPILE_ERROR,
 			"Class %s expects %s %d generic argument%s, but %d provided",
 			ZSTR_VAL(parent_ce->name),
 			num_required_params == parent_ce->num_generic_params ? "exactly" : "at least",
 			num_required_params, num_required_params == 1 ? "" : "s",
-			ce->parent->args.num_types);
+			parent_args->num_types);
 	}
 
 	// TODO: Validate type bounds.
@@ -1217,9 +1219,9 @@ static void zend_bind_parent_generic_args(zend_class_entry *ce, zend_class_entry
 
 	uint32_t offset = parent_ce->num_bound_generic_args;
 	for (uint32_t i = 0; i < parent_ce->num_generic_params; i++) {
-		/* Subsitute generic args to our direct parent (or use defaults). */
-		if (i < ce->parent->args.num_types) {
-			inherited_generic_args[i + offset] = ce->parent->args.types[i];
+		/* Substitute generic args to our direct parent (or use defaults). */
+		if (i < parent_args->num_types) {
+			inherited_generic_args[i + offset] = parent_args->types[i];
 			zend_type_fixup(&inherited_generic_args[i + offset], num_inherited_generic_args);
 		} else {
 			inherited_generic_args[i + offset] = parent_ce->generic_params[i].default_type;
@@ -1263,6 +1265,58 @@ static void zend_bind_parent_generic_args(zend_class_entry *ce, zend_class_entry
 	}
 }
 
+static void update_parents(zend_class_entry *ce, zend_class_entry *parent_ce) {
+	/* We copy the bound generic arguments into the parent references. These copies
+	 * are shallow, in that the structures are considered owned by the bound generic
+	 * args. Note that the bound args and parents have classes in the reverse order,
+	 * so start with a pointer to the end, which will be decremented below. */
+	zend_type *generic_args = ce->num_bound_generic_args
+		? ce->bound_generic_args + ce->num_bound_generic_args : NULL;
+
+	zend_class_reference **parents =
+		pemalloc(sizeof(zend_class_reference *) * (parent_ce->num_parents + 1),
+			ce->type == ZEND_INTERNAL_CLASS);
+	if (ce->parent_name) {
+		if (ZEND_PNR_IS_COMPLEX(ce->parent_name)) {
+			/* Ownership of the type arguments has been taken by generic arg binding. */
+			zend_name_reference *ref = ZEND_PNR_COMPLEX_GET_REF(ce->parent_name);
+			zend_string_release(ref->name);
+			efree(ref);
+		} else {
+			zend_string_release(ZEND_PNR_SIMPLE_GET_NAME(ce->parent_name));
+		}
+
+		zend_class_reference *ref = emalloc(ZEND_CLASS_REF_SIZE(parent_ce->num_generic_params));
+		ref->ce = parent_ce;
+		ref->args.num_types = parent_ce->num_generic_params;
+		generic_args -= ref->args.num_types;
+		memcpy(ref->args.types, generic_args, sizeof(zend_type) * ref->args.num_types);
+		parents[0] = ref;
+	} else {
+		/* Internal inheritance. */
+		parents[0] = ZEND_CE_TO_REF(parent_ce);
+	}
+
+	for (uint32_t i = 0; i < parent_ce->num_parents; i++) {
+		zend_class_reference *ref = parent_ce->parents[i];
+		if (ZEND_REF_IS_TRIVIAL(ref)) {
+			parents[i + 1] = ref;
+		} else {
+			zend_class_reference *new_ref = emalloc(ZEND_CLASS_REF_SIZE(ref->args.num_types));
+			new_ref->ce = ref->ce;
+			new_ref->args.num_types = ref->args.num_types;
+			generic_args -= ref->args.num_types;
+			memcpy(new_ref->args.types, generic_args, sizeof(zend_type) * ref->args.num_types);
+			parents[i + 1] = new_ref;
+		}
+	}
+
+	ZEND_ASSERT(generic_args == NULL || generic_args == ce->bound_generic_args);
+	ce->num_parents = parent_ce->num_parents + 1;
+	ce->parents = parents;
+	ce->ce_flags |= ZEND_ACC_RESOLVED_PARENT;
+}
+
 ZEND_API void zend_do_inheritance_ex(zend_class_entry *ce, zend_class_entry *parent_ce, zend_bool checked) /* {{{ */
 {
 	zend_property_info *property_info;
@@ -1288,18 +1342,17 @@ ZEND_API void zend_do_inheritance_ex(zend_class_entry *ce, zend_class_entry *par
 		}
 	}
 
-	if (ce->parent_name) {
-		zend_string_release_ex(ce->parent_name->name, 0);
-		ce->parent->ce = parent_ce;
-	} else {
-		/* Internal inheritance */
-		ce->parent = ZEND_CE_TO_REF(parent_ce);
+	/* Compute bound_generic_args. */
+	const zend_type_list *parent_args = &zend_empty_type_list;
+	if (ce->parent_name && ZEND_PNR_IS_COMPLEX(ce->parent_name)) {
+		parent_args = &ZEND_PNR_COMPLEX_GET_REF(ce->parent_name)->args;
 	}
-	ce->ce_flags |= ZEND_ACC_RESOLVED_PARENT;
+	if (parent_args->num_types || parent_ce->num_generic_params) {
+		zend_bind_parent_generic_args(ce, parent_ce, parent_args);
+	}
 
-	if (ce->parent->args.num_types || parent_ce->num_generic_params) {
-		zend_bind_parent_generic_args(ce, parent_ce);
-	}
+	/* Update parents list, including grandparents. */
+	update_parents(ce, parent_ce);
 
 	/* Inherit interfaces */
 	if (parent_ce->num_interfaces) {
@@ -1560,7 +1613,7 @@ ZEND_API void zend_do_implement_interface(zend_class_entry *ce, zend_class_entry
 {
 	uint32_t i, ignore = 0;
 	uint32_t current_iface_num = ce->num_interfaces;
-	uint32_t parent_iface_num  = ce->parent ? ce->parent->ce->num_interfaces : 0;
+	uint32_t parent_iface_num  = ce->num_parents ? ce->parents[0]->ce->num_interfaces : 0;
 	zend_string *key;
 	zend_class_constant *c;
 
@@ -1601,7 +1654,7 @@ ZEND_API void zend_do_implement_interface(zend_class_entry *ce, zend_class_entry
 static void zend_do_implement_interfaces(zend_class_entry *ce, zend_class_entry **interfaces) /* {{{ */
 {
 	zend_class_entry *iface;
-	uint32_t num_parent_interfaces = ce->parent ? ce->parent->ce->num_interfaces : 0;
+	uint32_t num_parent_interfaces = ce->num_parents ? ce->parents[0]->ce->num_interfaces : 0;
 	uint32_t num_interfaces = num_parent_interfaces;
 	zend_string *key;
 	zend_class_constant *c;
@@ -2554,7 +2607,7 @@ ZEND_API int zend_do_link_class(zend_class_entry *ce, zend_string *lc_parent_nam
 
 	if (ce->parent_name) {
 		parent = zend_fetch_class_by_name(
-			ce->parent_name->name, lc_parent_name,
+			ZEND_PNR_GET_NAME(ce->parent_name), lc_parent_name,
 			ZEND_FETCH_CLASS_ALLOW_NEARLY_LINKED | ZEND_FETCH_CLASS_EXCEPTION);
 		if (!parent) {
 			check_unrecoverable_load_failure(ce);

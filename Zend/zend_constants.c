@@ -361,11 +361,11 @@ ZEND_API zval *zend_get_constant_ex(zend_string *cname, zend_class_entry *scope,
 			if (UNEXPECTED(!scope)) {
 				zend_throw_error(NULL, "Cannot access parent:: when no class scope is active");
 				goto failure;
-			} else if (UNEXPECTED(!scope->parent)) {
+			} else if (UNEXPECTED(!scope->num_parents)) {
 				zend_throw_error(NULL, "Cannot access parent:: when current class scope has no parent");
 				goto failure;
 			} else {
-				ce = scope->parent->ce;
+				ce = scope->parents[0]->ce;
 			}
 		} else if (zend_string_equals_literal_ci(class_name, "static")) {
 			ce = zend_get_called_scope(EG(current_execute_data));

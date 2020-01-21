@@ -402,14 +402,12 @@ PHPDBG_INFO(classes) /* {{{ */
 	ZEND_HASH_FOREACH_PTR(&classes, ce) {
 		phpdbg_print_class_name(ce);
 
-		if (ce->parent) {
-			zend_class_reference *pce;
+		if (ce->num_parents) {
 			phpdbg_xml("<parents %r>");
-			pce = ce->parent;
-			do {
+			for (uint32_t i = 0; i < ce->num_parents; i++) {
 				phpdbg_out("|-------- ");
-				phpdbg_print_class_name(pce->ce);
-			} while ((pce = pce->ce->parent));
+				phpdbg_print_class_name(ce->parents[i]->ce);
+			}
 			phpdbg_xml("</parents>");
 		}
 

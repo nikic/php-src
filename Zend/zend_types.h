@@ -342,6 +342,9 @@ typedef struct _zend_name_reference {
 #define ZEND_CE_TO_REF(ce) \
 	((zend_class_reference *) ((char *) (ce) - ZEND_CLASS_ENTRY_HEADER_SIZE))
 
+#define ZEND_REF_IS_TRIVIAL(ref) \
+	((ref)->ce == (zend_class_entry *) ((char *) (ref) + ZEND_CLASS_ENTRY_HEADER_SIZE))
+
 #define ZEND_CLASS_REF_SIZE(num_types) \
 	(sizeof(zend_class_reference) - sizeof(zend_type) + (num_types) * sizeof(zend_type))
 

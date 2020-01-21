@@ -81,10 +81,14 @@ ZEND_API void rebuild_object_properties(zend_object *zobj) /* {{{ */
 				}
 			} ZEND_HASH_FOREACH_END();
 			if (flags & ZEND_ACC_CHANGED) {
-				while (ce->parent && ce->parent->ce->default_properties_count) {
-					ce = ce->parent->ce;
-					ZEND_HASH_FOREACH_PTR(&ce->properties_info, prop_info) {
-						if (prop_info->ce == ce &&
+				for (uint32_t i = 0; i < ce->num_parents; i++) {
+					zend_class_entry *parent_ce = ce->parents[i]->ce;
+					if (!parent_ce->default_properties_count) {
+						break;
+					}
+
+					ZEND_HASH_FOREACH_PTR(&parent_ce->properties_info, prop_info) {
+						if (prop_info->ce == parent_ce &&
 						    !(prop_info->flags & ZEND_ACC_STATIC) &&
 						    (prop_info->flags & ZEND_ACC_PRIVATE)) {
 							zval zv;
@@ -324,14 +328,11 @@ static void zend_std_call_issetter(zend_object *zobj, zend_string *prop_name, zv
 
 static zend_always_inline zend_bool is_derived_class(zend_class_entry *child_class, zend_class_entry *parent_class) /* {{{ */
 {
-	zend_class_reference *ref = child_class->parent;
-	while (ref) {
-		if (ref->ce == parent_class) {
+	for (uint32_t i = 0; i < child_class->num_parents; i++) {
+		if (child_class->parents[i]->ce == parent_class) {
 			return 1;
 		}
-		ref = ref->ce->parent;
 	}
-
 	return 0;
 }
 /* }}} */
@@ -1170,27 +1171,32 @@ static zend_never_inline zend_function *zend_get_parent_private_method(zend_clas
  */
 ZEND_API int zend_check_protected(zend_class_entry *ce, zend_class_entry *scope) /* {{{ */
 {
-	zend_class_entry *fbc_scope = ce;
+	if (ce == scope) {
+		return 1;
+	}
+
+	if (scope == NULL) {
+		return 0;
+	}
 
 	/* Is the context that's calling the function, the same as one of
 	 * the function's parents?
 	 */
-	while (fbc_scope) {
-		if (fbc_scope==scope) {
+	for (uint32_t i = 0; i < ce->num_parents; i++) {
+		if (ce->parents[i]->ce == scope) {
 			return 1;
 		}
-		fbc_scope = fbc_scope->parent ? fbc_scope->parent->ce : NULL;
 	}
 
 	/* Is the function's scope the same as our current object context,
 	 * or any of the parents of our context?
 	 */
-	while (scope) {
-		if (scope==ce) {
+	for (uint32_t i = 0; i < scope->num_parents; i++) {
+		if (scope->parents[i]->ce == ce) {
 			return 1;
 		}
-		scope = scope->parent ? scope->parent->ce : NULL;
 	}
+
 	return 0;
 }
 /* }}} */
@@ -1430,15 +1436,15 @@ ZEND_API void zend_class_init_statics(zend_class_entry *class_type) /* {{{ */
 	zval *p;
 
 	if (class_type->default_static_members_count && !CE_STATIC_MEMBERS(class_type)) {
-		if (class_type->parent) {
-			zend_class_init_statics(class_type->parent->ce);
+		if (class_type->num_parents) {
+			zend_class_init_statics(class_type->parents[0]->ce);
 		}
 
 		ZEND_MAP_PTR_SET(class_type->static_members_table, emalloc(sizeof(zval) * class_type->default_static_members_count));
 		for (i = 0; i < class_type->default_static_members_count; i++) {
 			p = &class_type->default_static_members_table[i];
 			if (Z_TYPE_P(p) == IS_INDIRECT) {
-				zval *q = &CE_STATIC_MEMBERS(class_type->parent->ce)[i];
+				zval *q = &CE_STATIC_MEMBERS(class_type->parents[0]->ce)[i];
 				ZVAL_DEINDIRECT(q);
 				ZVAL_INDIRECT(&CE_STATIC_MEMBERS(class_type)[i], q);
 			} else {
