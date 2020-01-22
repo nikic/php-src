@@ -1085,6 +1085,37 @@ static zend_never_inline zval *zend_assign_to_typed_prop(
 	return zend_assign_to_variable(property_val, &tmp, IS_TMP_VAR, EX_USES_STRICT_TYPES());
 }
 
+static ZEND_COLD void zend_validate_generic_args_error(
+		zend_class_entry *ce, const zend_type_list *args) {
+	if (args->num_types > ce->num_generic_params) {
+		zend_throw_error(NULL,
+			"Class %s expects %s %d generic argument%s, but %d provided",
+			ZSTR_VAL(ce->name),
+			ce->num_required_generic_params == ce->num_generic_params ? "exactly" : "at most",
+			ce->num_generic_params, ce->num_generic_params == 1 ? "" : "s",
+			args->num_types);
+	} else {
+		ZEND_ASSERT(args->num_types < ce->num_required_generic_params);
+		zend_throw_error(NULL,
+			"Class %s expects %s %d generic argument%s, but %d provided",
+			ZSTR_VAL(ce->name),
+			ce->num_required_generic_params == ce->num_generic_params ? "exactly" : "at least",
+			ce->num_required_generic_params, ce->num_required_generic_params == 1 ? "" : "s",
+			args->num_types);
+	}
+}
+
+static zend_always_inline zend_bool zend_validate_generic_args(
+		zend_class_entry *ce, const zend_type_list *args) {
+	if (EXPECTED(args->num_types <= ce->num_generic_params
+			&& args->num_types >= ce->num_required_generic_params)) {
+		return 1;
+	}
+
+	zend_validate_generic_args_error(ce, args);
+	return 0;
+}
+
 static zend_always_inline zend_bool zend_check_type_slow(
 		zend_type type, zval *arg, zend_reference *ref, void **cache_slot, zend_class_entry *scope,
 		zend_bool is_return_type, zend_bool is_internal)
@@ -1106,6 +1137,9 @@ static zend_always_inline zend_bool zend_check_type_slow(
 				goto builtin_types;
 			}
 			if (cache_slot) *cache_slot = (void *) ce;
+		}
+		if (!zend_validate_generic_args(ce, args)) {
+			return 0;
 		}
 		if (instanceof_unpacked(ZEND_CE_TO_REF(Z_OBJCE_P(arg)), ce, args)) {
 			return 1;
