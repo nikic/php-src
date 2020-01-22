@@ -2208,14 +2208,20 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_function_slow(const zend_class_entry
 /* }}} */
 
 static zend_always_inline zend_bool zend_type_lists_compatible(
-		const zend_type_list *list1, const zend_type_list *list2) {
-	if (list1->num_types != list2->num_types) {
-		return 0;
-	}
-
-	for (uint32_t i = 0; i < list1->num_types; i++) {
+		const zend_type_list *list1, const zend_type_list *list2, const zend_class_entry *ce) {
+	/* list1 is complete, while list2 may have defaulted arguments. */
+	uint32_t i = 0;
+	for (; i < list2->num_types; i++) {
 		const zend_type *type1 = &list1->types[i];
 		const zend_type *type2 = &list2->types[i];
+		// TODO: Implement proper type comparison.
+		if (type1->type_mask != type2->type_mask || type1->ptr != type2->ptr) {
+			return 0;
+		}
+	}
+	for (; i < list1->num_types; i++) {
+		const zend_type *type1 = &list1->types[i];
+		const zend_type *type2 = &ce->generic_params[i].default_type;
 		// TODO: Implement proper type comparison.
 		if (type1->type_mask != type2->type_mask || type1->ptr != type2->ptr) {
 			return 0;
@@ -2230,12 +2236,12 @@ ZEND_API zend_bool ZEND_FASTCALL instanceof_unpacked_slow(
 	if (ce->ce_flags & ZEND_ACC_INTERFACE) {
 		return instanceof_function(instance_ce, ce);
 	} else {
-		if (instance_ce == ce && zend_type_lists_compatible(&instance_ref->args, args)) {
+		if (instance_ce == ce && zend_type_lists_compatible(&instance_ref->args, args, ce)) {
 			return 1;
 		}
 		for (uint32_t i = 0; i < instance_ce->num_parents; i++) {
 			zend_class_reference *parent_ref = instance_ce->parents[i];
-			if (parent_ref->ce == ce && zend_type_lists_compatible(&parent_ref->args, args)) {
+			if (parent_ref->ce == ce && zend_type_lists_compatible(&parent_ref->args, args, ce)) {
 				return 1;
 			}
 		}
