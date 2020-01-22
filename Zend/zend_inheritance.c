@@ -1182,14 +1182,7 @@ static void zend_type_fixup(zend_type *type, uint32_t generic_offset) {
 
 static void zend_bind_parent_generic_args(
 		zend_class_entry *ce, zend_class_entry *parent_ce, const zend_type_list *parent_args) {
-	uint32_t num_required_params = 0;
-	for (uint32_t i = 0; i < parent_ce->num_generic_params; i++) {
-		if (ZEND_TYPE_IS_SET(parent_ce->generic_params[i].default_type)) {
-			break;
-		}
-		num_required_params = i + 1;
-	}
-
+	uint32_t num_required_params = parent_ce->num_required_generic_params;
 	if (parent_args->num_types > parent_ce->num_generic_params) {
 		zend_error(E_COMPILE_ERROR,
 			"Class %s expects %s %d generic argument%s, but %d provided",

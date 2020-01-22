@@ -186,6 +186,7 @@ struct _zend_class_entry {
 	/* generic_params are the free generic parameters on this class.
 	 * bound_generic_args are the bound generic parameters of parent classes. */
 	uint32_t num_generic_params;
+	uint32_t num_required_generic_params;
 	uint32_t num_bound_generic_args;
 	zend_generic_param *generic_params;
 	zend_type *bound_generic_args;

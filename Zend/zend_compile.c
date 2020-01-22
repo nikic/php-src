@@ -1943,6 +1943,7 @@ ZEND_API void zend_initialize_class_data(zend_class_entry *ce, zend_bool nullify
 		ce->interfaces = NULL;
 		ce->num_traits = 0;
 		ce->num_generic_params = 0;
+		ce->num_required_generic_params = 0;
 		ce->num_bound_generic_args = 0;
 		ce->trait_names = NULL;
 		ce->trait_aliases = NULL;
@@ -6698,6 +6699,7 @@ static void zend_compile_generic_params(zend_ast *params_ast)
 	zend_generic_param *generic_params = emalloc(list->children * sizeof(zend_generic_param));
 	CG(active_class_entry)->generic_params = generic_params;
 
+	zend_bool have_optional = 0;
 	for (uint32_t i = 0; i < list->children; i++) {
 		zend_ast *param_ast = list->child[i];
 		zend_string *name = zend_ast_get_str(param_ast->child[0]);
@@ -6711,7 +6713,8 @@ static void zend_compile_generic_params(zend_ast *params_ast)
 
 		for (uint32_t j = 0; j < i; j++) {
 			if (zend_string_equals(name, generic_params[j].name)) {
-				zend_error(E_COMPILE_ERROR, "Duplicate generic parameter %s", ZSTR_VAL(name));
+				zend_error_noreturn(E_COMPILE_ERROR,
+					"Duplicate generic parameter %s", ZSTR_VAL(name));
 			}
 		}
 
@@ -6722,15 +6725,25 @@ static void zend_compile_generic_params(zend_ast *params_ast)
 			default_type = zend_compile_typename(param_ast->child[2], 0, 0);
 		}
 
+		if (ZEND_TYPE_IS_SET(default_type)) {
+			have_optional = 1;
+		} else if (have_optional) {
+			zend_error_noreturn(E_COMPILE_ERROR,
+				"Required generic parameter %s follows optional", ZSTR_VAL(name));
+		}
+
 		generic_params[i].name = zend_string_copy(name);
 		generic_params[i].bound_type = bound_type;
 		generic_params[i].default_type = default_type;
 		// TODO: Validate potential additional constraints on the types.
 		// For example, can "void" be used?
 
-		// Update number of parameters on the fly, so that previous parameters can be
-		// referenced in the type bound or default of following parameters.
+		/* Update number of parameters on the fly, so that previous parameters can be
+		 * referenced in the type bound or default of following parameters. */
 		CG(active_class_entry)->num_generic_params = i + 1;
+		if (!have_optional) {
+			CG(active_class_entry)->num_required_generic_params = i + 1;
+		}
 	}
 }
 
