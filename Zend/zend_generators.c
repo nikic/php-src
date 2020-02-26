@@ -271,6 +271,8 @@ static void zend_generator_free_storage(zend_object *object) /* {{{ */
 		efree(generator->node.child.ht);
 	}
 
+	uint32_t num_args = ZEND_CALL_NUM_ARGS(generator->execute_data);
+
 	zend_object_std_dtor(&generator->std);
 
 	if (generator->iterator) {

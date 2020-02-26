@@ -1733,6 +1733,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_GENERATOR_CREATE_SPEC_HANDLER(
 		zend_generator *generator;
 		zend_execute_data *gen_execute_data;
 		uint32_t num_args, used_stack, call_info;
+		zend_op_array *op_array = &EX(func)->op_array;
 
 		object_init_ex(return_value, zend_ce_generator);
 
@@ -1745,12 +1746,12 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_GENERATOR_CREATE_SPEC_HANDLER(
 		 * is allocated on heap.
 		 */
 		num_args = EX_NUM_ARGS();
-		if (EXPECTED(num_args <= EX(func)->op_array.num_args)) {
-			used_stack = (ZEND_CALL_FRAME_SLOT + EX(func)->op_array.last_var + EX(func)->op_array.T) * sizeof(zval);
+		if (EXPECTED(num_args <= op_array->num_args)) {
+			used_stack = (ZEND_CALL_FRAME_SLOT + op_array->last_var + op_array->T) * sizeof(zval);
 			gen_execute_data = (zend_execute_data*)emalloc(used_stack);
-			used_stack = (ZEND_CALL_FRAME_SLOT + EX(func)->op_array.last_var) * sizeof(zval);
+			used_stack = (ZEND_CALL_FRAME_SLOT + op_array->last_var) * sizeof(zval);
 		} else {
-			used_stack = (ZEND_CALL_FRAME_SLOT + num_args + EX(func)->op_array.last_var + EX(func)->op_array.T - EX(func)->op_array.num_args) * sizeof(zval);
+			used_stack = (ZEND_CALL_FRAME_SLOT + num_args + op_array->last_var + op_array->T - op_array->num_args) * sizeof(zval);
 			gen_execute_data = (zend_execute_data*)emalloc(used_stack);
 		}
 		memcpy(gen_execute_data, execute_data, used_stack);
@@ -1763,6 +1764,29 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_GENERATOR_CREATE_SPEC_HANDLER(
 		generator->execute_fake.func = NULL;
 		generator->execute_fake.prev_execute_data = NULL;
 		ZVAL_OBJ(&generator->execute_fake.This, (zend_object *) generator);
+
+		/* Back up the arguments of the generator function to support rewinding. */
+		generator->orig_args = emalloc(num_args * sizeof(zval));
+		if (num_args <= op_array->num_args) {
+			zval *dst = generator->orig_args;
+			zval *src = ZEND_CALL_ARG(execute_data, 1);
+			uint32_t i;
+			for (i = 0; i < num_args; i++) {
+				ZVAL_COPY(dst++, src++);
+			}
+		} else {
+			zval *dst = generator->orig_args;
+			zval *src = ZEND_CALL_ARG(execute_data, 1);
+			uint32_t i = 0;
+			for (; i < op_array->num_args; i++) {
+				ZVAL_COPY(dst++, src++);
+			}
+
+			src = EX_VAR_NUM(op_array->last_var + op_array->T);
+			for (; i < num_args; i++) {
+				ZVAL_COPY(dst++, src++);
+			}
+		}
 
 		gen_execute_data->opline = opline + 1;
 		/* EX(return_value) keeps pointer to zend_object (not a real zval) */
@@ -33308,7 +33332,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_GET_CLASS_SPEC_UNUSED_UNUSED_H
 				if (IS_UNUSED == IS_CV && UNEXPECTED(Z_TYPE_P(op1) == IS_UNDEF)) {
 					ZVAL_UNDEFINED_OP1();
 				}
-				zend_type_error("get_class() expects argument 1 ($object) to be of type object, %s given", zend_get_type_by_const(Z_TYPE_P(op1)));
+				zend_type_error("get_class() expects argument #1 ($object) to be of type object, %s given", zend_get_type_by_const(Z_TYPE_P(op1)));
 				ZVAL_UNDEF(EX_VAR(opline->result.var));
 			}
 			break;
