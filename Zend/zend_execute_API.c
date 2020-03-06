@@ -639,6 +639,8 @@ int _call_user_function_ex(zval *object, zval *function_name, zval *retval_ptr, 
 }
 /* }}} */
 
+/* Returns SUCCESS if the call returned or an exception was thrown.
+ * Only returns FAILURE if call was not attempted due to executor state. */
 int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /* {{{ */
 {
 	uint32_t i;
@@ -694,14 +696,14 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /
 			if (error) {
 				zend_string *callable_name
 					= zend_get_callable_name_ex(&fci->function_name, fci->object);
-				zend_error(E_WARNING, "Invalid callback %s, %s", ZSTR_VAL(callable_name), error);
+				zend_throw_error(NULL, "Invalid callback %s, %s", ZSTR_VAL(callable_name), error);
 				efree(error);
 				zend_string_release_ex(callable_name, 0);
 			}
 			if (EG(current_execute_data) == &dummy_execute_data) {
 				EG(current_execute_data) = dummy_execute_data.prev_execute_data;
 			}
-			return FAILURE;
+			return SUCCESS;
 		}
 
 		ZEND_ASSERT(!error);
@@ -732,7 +734,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /
 				EG(current_execute_data) = dummy_execute_data.prev_execute_data;
 				zend_rethrow_exception(EG(current_execute_data));
 			}
-			return FAILURE;
+			return SUCCESS;
 		}
 	}
 
@@ -767,7 +769,7 @@ int zend_call_function(zend_fcall_info *fci, zend_fcall_info_cache *fci_cache) /
 						if (EG(current_execute_data) == &dummy_execute_data) {
 							EG(current_execute_data) = dummy_execute_data.prev_execute_data;
 						}
-						return FAILURE;
+						return SUCCESS;
 					}
 				}
 			}
