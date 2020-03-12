@@ -12,9 +12,5 @@ printf ("A=%s\n", getA());
 const A="hello";
 function getA() {return A;}
 ?>
---EXPECTF--
-Fatal error: Uncaught Error: Undefined constant 'A' in %s:%d
-Stack trace:
-#0 %s(%d): getA()
-#1 {main}
-  thrown in %s on line %d
+--EXPECT--
+A=hello

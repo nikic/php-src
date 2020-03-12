@@ -3,8 +3,8 @@ Can't use arrays as key for constant array
 --FILE--
 <?php
 
-const C1 = 1; // force dynamic evaluation
 const C2 = [C1, [] => 1];
+const C1 = 1; // force dynamic evaluation
 var_dump(C2);
 
 ?>

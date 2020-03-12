@@ -12,12 +12,8 @@ echo(\test\ns1\FOO);
 echo(BAR);
 
 const BAR = "ok\n";
---EXPECTF--
+--EXPECT--
 ok
 ok
 ok
-
-Fatal error: Uncaught Error: Undefined constant 'test\ns1\BAR' in %s:%d
-Stack trace:
-#0 {main}
-  thrown in %s on line %d
+ok

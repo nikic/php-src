@@ -6976,7 +6976,7 @@ void zend_compile_group_use(zend_ast *ast) /* {{{ */
 }
 /* }}} */
 
-void zend_compile_const_decl(zend_ast *ast) /* {{{ */
+void zend_compile_const_decl(zend_ast *ast, zend_bool toplevel) /* {{{ */
 {
 	zend_ast_list *list = zend_ast_get_list(ast);
 	uint32_t i;
@@ -7009,10 +7009,19 @@ void zend_compile_const_decl(zend_ast *ast) /* {{{ */
 			}
 		}
 
-		name_node.op_type = IS_CONST;
-		ZVAL_STR(&name_node.u.constant, name);
+		if (toplevel) {
+			zend_constant c;
+			ZVAL_COPY_VALUE(&c.value, value_zv);
+			/* non persistent, case sensitive */
+			ZEND_CONSTANT_SET_FLAGS(&c, CONST_CS, PHP_USER_CONSTANT);
+			c.name = name;
+			zend_register_constant_ex(&c, /* error */ 1);
+		} else {
+			name_node.op_type = IS_CONST;
+			ZVAL_STR(&name_node.u.constant, name);
 
-		zend_emit_op(NULL, ZEND_DECLARE_CONST, &name_node, &value_node);
+			zend_emit_op(NULL, ZEND_DECLARE_CONST, &name_node, &value_node);
+		}
 
 		zend_register_seen_symbol(name, ZEND_SYMBOL_CONST);
 	}
@@ -8703,6 +8712,9 @@ void zend_compile_top_stmt(zend_ast *ast) /* {{{ */
 		CG(zend_lineno) = ast->lineno;
 		zend_compile_class_decl(ast, 1);
 		CG(zend_lineno) = ((zend_ast_decl *) ast)->end_lineno;
+	} else if (ast->kind == ZEND_AST_CONST_DECL) {
+		CG(zend_lineno) = ast->lineno;
+		zend_compile_const_decl(ast, 1);
 	} else {
 		zend_compile_stmt(ast);
 	}
@@ -8803,7 +8815,7 @@ void zend_compile_stmt(zend_ast *ast) /* {{{ */
 			zend_compile_use(ast);
 			break;
 		case ZEND_AST_CONST_DECL:
-			zend_compile_const_decl(ast);
+			zend_compile_const_decl(ast, 0);
 			break;
 		case ZEND_AST_NAMESPACE:
 			zend_compile_namespace(ast);
