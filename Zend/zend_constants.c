@@ -283,6 +283,10 @@ static zend_constant *zend_get_constant_str_impl(const char *name, size_t name_l
 {
 	zend_constant *c = zend_hash_str_find_ptr(EG(zend_constants), name, name_len);
 	if (c) {
+		if (UNEXPECTED(Z_CONSTANT(c->value))
+				&& UNEXPECTED(zval_update_constant_ex(&c->value, NULL) == FAILURE)) {
+			return NULL;
+		}
 		return c;
 	}
 
@@ -307,6 +311,10 @@ static zend_constant *zend_get_constant_impl(zend_string *name)
 {
 	zend_constant *c = zend_hash_find_ptr(EG(zend_constants), name);
 	if (c) {
+		if (UNEXPECTED(Z_CONSTANT(c->value))
+				&& UNEXPECTED(zval_update_constant_ex(&c->value, NULL) == FAILURE)) {
+			return NULL;
+		}
 		return c;
 	}
 

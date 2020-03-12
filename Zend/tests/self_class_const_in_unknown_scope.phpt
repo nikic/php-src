@@ -18,9 +18,9 @@ var_dump(BAR);
 
 ?>
 --EXPECTF--
-string(4) "Test"
-
 Fatal error: Uncaught Error: Cannot use "self" when no class scope is active in %s:%d
 Stack trace:
-#0 {main}
+#0 %s(%d): eval()
+#1 %s(%d): Test->foobar()
+#2 {main}
   thrown in %s on line %d

@@ -4243,6 +4243,11 @@ static zend_always_inline int _zend_quick_get_constant(
 		return FAILURE;
 	}
 
+	if (UNEXPECTED(Z_CONSTANT(c->value))
+			&& UNEXPECTED(zval_update_constant_ex(&c->value, NULL) == FAILURE)) {
+		return FAILURE;
+	}
+
 	if (!check_defined_only) {
 		ZVAL_COPY_OR_DUP(EX_VAR(opline->result.var), &c->value);
 		if (ZEND_CONSTANT_FLAGS(c) & CONST_DEPRECATED) {

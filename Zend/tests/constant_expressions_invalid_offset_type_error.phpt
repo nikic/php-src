@@ -5,6 +5,7 @@ Can't use arrays as key for constant array
 
 const C1 = 1; // force dynamic evaluation
 const C2 = [C1, [] => 1];
+var_dump(C2);
 
 ?>
 --EXPECTF--
