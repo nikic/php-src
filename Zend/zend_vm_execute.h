@@ -6308,8 +6308,7 @@ static ZEND_OPCODE_HANDLER_RET ZEND_FASTCALL ZEND_DECLARE_CONST_SPEC_CONST_CONST
 	ZEND_CONSTANT_SET_FLAGS(&c, CONST_CS, PHP_USER_CONSTANT);
 	c.name = zend_string_copy(Z_STR_P(name));
 
-	if (zend_register_constant(&c) == FAILURE) {
-	}
+	zend_register_constant_ex(&c, /* error */ 1);
 
 
 	ZEND_VM_NEXT_OPCODE_CHECK_EXCEPTION();

@@ -13,5 +13,4 @@ if (defined('a')) {
 
 ?>
 --EXPECTF--
-Notice: Constant a already defined in %s on line %d
-2
+Fatal error: Constant a already defined in %s on line %d

@@ -480,7 +480,7 @@ static void* zend_hash_add_constant(HashTable *ht, zend_string *key, zend_consta
 	return ret;
 }
 
-ZEND_API int zend_register_constant(zend_constant *c)
+ZEND_API int zend_register_constant_ex(zend_constant *c, zend_bool error)
 {
 	zend_string *lowercase_name = NULL;
 	zend_string *name;
@@ -506,7 +506,7 @@ ZEND_API int zend_register_constant(zend_constant *c)
 		|| (!persistent && zend_get_special_const(ZSTR_VAL(name), ZSTR_LEN(name)))
 		|| zend_hash_add_constant(EG(zend_constants), name, c) == NULL
 	) {
-		zend_error(E_NOTICE,"Constant %s already defined", ZSTR_VAL(name));
+		zend_error(error ? E_ERROR : E_NOTICE, "Constant %s already defined", ZSTR_VAL(name));
 		zend_string_release(c->name);
 		if (!persistent) {
 			zval_ptr_dtor_nogc(&c->value);
@@ -517,4 +517,9 @@ ZEND_API int zend_register_constant(zend_constant *c)
 		zend_string_release(lowercase_name);
 	}
 	return ret;
+}
+
+ZEND_API int zend_register_constant(zend_constant *c)
+{
+	return zend_register_constant_ex(c, /* error */ 0);
 }

@@ -7431,8 +7431,7 @@ ZEND_VM_HANDLER(143, ZEND_DECLARE_CONST, CONST, CONST)
 	ZEND_CONSTANT_SET_FLAGS(&c, CONST_CS, PHP_USER_CONSTANT);
 	c.name = zend_string_copy(Z_STR_P(name));
 
-	if (zend_register_constant(&c) == FAILURE) {
-	}
+	zend_register_constant_ex(&c, /* error */ 1);
 
 	FREE_OP1();
 	FREE_OP2();
