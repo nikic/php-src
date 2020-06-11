@@ -75,7 +75,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4_wchar,
-	mbfl_filt_conv_ucs4_flush
+	mbfl_filt_conv_ucs4_flush,
 	NULL,
 };
 
@@ -95,7 +95,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4be_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4be_wchar,
-	mbfl_filt_conv_ucs4_flush
+	mbfl_filt_conv_ucs4_flush,
 	NULL,
 };
 
@@ -115,7 +115,7 @@ const struct mbfl_convert_vtbl vtbl_ucs4le_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_ucs4le_wchar,
-	mbfl_filt_conv_ucs4_flush
+	mbfl_filt_conv_ucs4_flush,
 	NULL,
 };
 

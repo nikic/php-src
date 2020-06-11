@@ -75,7 +75,7 @@ const struct mbfl_convert_vtbl vtbl_utf32_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_utf32_wchar,
-	mbfl_filt_conv_utf32_flush
+	mbfl_filt_conv_utf32_flush,
 	NULL,
 };
 
@@ -115,7 +115,7 @@ const struct mbfl_convert_vtbl vtbl_utf32le_wchar = {
 	mbfl_filt_conv_common_ctor,
 	mbfl_filt_conv_common_dtor,
 	mbfl_filt_conv_utf32le_wchar,
-	mbfl_filt_conv_utf32_flush
+	mbfl_filt_conv_utf32_flush,
 	NULL,
 };
 
