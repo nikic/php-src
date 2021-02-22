@@ -87,15 +87,6 @@ static zend_function *zend_duplicate_internal_function(zend_function *func, zend
 }
 /* }}} */
 
-static zend_function *zend_duplicate_user_function(zend_function *func) /* {{{ */
-{
-	zend_op_array *new_op_array = zend_arena_alloc(&CG(arena), sizeof(zend_op_array));
-	memcpy(new_op_array, func, sizeof(zend_op_array));
-	zend_init_static_variables_map_ptr(new_op_array);
-	return (zend_function *) new_op_array;
-}
-/* }}} */
-
 static zend_always_inline zend_function *zend_duplicate_function(zend_function *func, zend_class_entry *ce, bool is_interface) /* {{{ */
 {
 	if (UNEXPECTED(func->type == ZEND_INTERNAL_FUNCTION)) {
@@ -107,12 +98,7 @@ static zend_always_inline zend_function *zend_duplicate_function(zend_function *
 		if (EXPECTED(func->op_array.function_name)) {
 			zend_string_addref(func->op_array.function_name);
 		}
-		if (is_interface
-		 || EXPECTED(!func->op_array.static_variables)) {
-			/* reuse the same op_array structure */
-			return func;
-		}
-		return zend_duplicate_user_function(func);
+		return func;
 	}
 }
 /* }}} */
@@ -937,9 +923,7 @@ static zend_always_inline inheritance_status do_inheritance_check_on_method_ex(
 
 	if (!check_only && child->common.prototype != proto && child_zv) {
 		do {
-			if (child->common.scope != ce
-			 && child->type == ZEND_USER_FUNCTION
-			 && !child->op_array.static_variables) {
+			if (child->common.scope != ce && child->type == ZEND_USER_FUNCTION) {
 				if (ce->ce_flags & ZEND_ACC_INTERFACE) {
 					/* Few parent interfaces contain the same method */
 					break;
