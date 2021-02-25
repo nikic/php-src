@@ -1293,6 +1293,7 @@ ZEND_API void zend_do_inheritance_ex(zend_class_entry *ce, zend_class_entry *par
 				if (Z_OPT_TYPE_P(dst) == IS_CONSTANT_AST) {
 					ce->ce_flags &= ~ZEND_ACC_CONSTANTS_UPDATED;
 					ce->ce_flags |= ZEND_ACC_HAS_AST_PROPERTIES;
+					ZEND_ASSERT(!(GC_FLAGS(Z_AST_P(dst)) & IS_AST_DYNAMIC));
 				}
 				continue;
 			} while (dst != end);
@@ -1304,6 +1305,9 @@ ZEND_API void zend_do_inheritance_ex(zend_class_entry *ce, zend_class_entry *par
 				if (Z_OPT_TYPE_P(dst) == IS_CONSTANT_AST) {
 					ce->ce_flags &= ~ZEND_ACC_CONSTANTS_UPDATED;
 					ce->ce_flags |= ZEND_ACC_HAS_AST_PROPERTIES;
+					if (GC_FLAGS(Z_AST_P(dst)) & IS_AST_DYNAMIC) {
+						ce->ce_flags |= ZEND_ACC_HAS_DYNAMIC_AST_PROPERTIES;
+					}
 				}
 				continue;
 			} while (dst != end);
