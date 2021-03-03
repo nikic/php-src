@@ -1644,9 +1644,12 @@ static zend_always_inline zend_result _object_and_properties_init(zval *arg, zen
 			return SUCCESS;
 		}
 	} else {
-		ZEND_ASSERT(!EG(exception));
+		/* Report failure if an exception is thrown during create_object(). However, don't
+		 * report a failure if an exception already exists, as this causes problems with
+		 * extension code that does not handle exceptions early enough. */
+		bool had_exception = EG(exception) != NULL;
 		ZVAL_OBJ(arg, class_type->create_object(class_type));
-		if (EXPECTED(!EG(exception))) {
+		if (EXPECTED(!EG(exception) || had_exception)) {
 			return SUCCESS;
 		}
 	}
