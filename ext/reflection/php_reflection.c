@@ -3665,10 +3665,8 @@ ZEND_METHOD(ReflectionClassConstant, getValue)
 	}
 	GET_REFLECTION_OBJECT_PTR(ref);
 
+	zval_update_constant_ex(&ref->value, ref->ce);
 	ZVAL_COPY_OR_DUP(return_value, &ref->value);
-	if (Z_TYPE_P(return_value) == IS_CONSTANT_AST) {
-		zval_update_constant_ex(return_value, ref->ce);
-	}
 }
 /* }}} */
 
