@@ -1644,6 +1644,7 @@ static zend_always_inline zend_result _object_and_properties_init(zval *arg, zen
 			return SUCCESS;
 		}
 	} else {
+		ZEND_ASSERT(!EG(exception));
 		ZVAL_OBJ(arg, class_type->create_object(class_type));
 		if (EXPECTED(!EG(exception))) {
 			return SUCCESS;

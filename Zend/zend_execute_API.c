@@ -320,11 +320,13 @@ void shutdown_executor(void) /* {{{ */
 
 			if (ZEND_MAP_PTR(ce->mutable_data) && ZEND_MAP_PTR_GET_IMM(ce->mutable_data)) {
 				zend_cleanup_mutable_class_data(ce);
-			} else {
+			} else if (!(ce->ce_flags & ZEND_ACC_IMMUTABLE)) {
 				zend_class_constant *c;
 				ZEND_HASH_FOREACH_PTR(&ce->constants_table, c) {
-					zval_ptr_dtor(&c->value);
-					ZVAL_UNDEF(&c->value);
+					if (c->ce == ce) {
+						zval_ptr_dtor(&c->value);
+						ZVAL_UNDEF(&c->value);
+					}
 				} ZEND_HASH_FOREACH_END();
 			}
 
