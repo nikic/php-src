@@ -1477,11 +1477,24 @@ static zend_always_inline zend_result _object_properties_init(zend_object *objec
 				ZVAL_COPY_PROP(dst, src);
 				if (Z_TYPE_P(dst) == IS_CONSTANT_AST) {
 					zend_property_info *prop_info = zend_get_property_info_for_slot(object, dst);
-					if (zval_update_constant_ex(dst, prop_info->ce) == FAILURE
-							|| (ZEND_TYPE_IS_SET(prop_info->type)
-								&& !zend_verify_property_type(prop_info, dst, /* strict */ 1))) {
-						zval_ptr_dtor_nogc(dst);
+					if (Z_EXTRA_P(src)) {
+						zend_throw_error(NULL,
+							"Trying to recursively instantiate %s "
+							"while evaluating default value for %s::$%s",
+							ZSTR_VAL(class_type->name), ZSTR_VAL(prop_info->ce->name),
+							zend_get_unmangled_property_name(prop_info->name));
+						goto failure;
+					}
+
+					Z_EXTRA_P(src) = 1;
+					zend_result result = zval_update_constant_ex(dst, prop_info->ce);
+					Z_EXTRA_P(src) = 0;
+
+					if (result == FAILURE || (ZEND_TYPE_IS_SET(prop_info->type)
+							&& !zend_verify_property_type(prop_info, dst, /* strict */ 1))) {
+failure:
 						/* On failure, initialize the remaining properties with UNDEF. */
+						zval_ptr_dtor_nogc(dst);
 						do {
 							ZVAL_UNDEF(dst);
 							src++;
