@@ -15,6 +15,12 @@ function test(
 }
 test();
 
+// Check that nested new works as well.
+function test2($p = new C(new C(__FUNCTION__))) {
+    var_dump($p);
+}
+test2();
+
 ?>
 --EXPECTF--
 object(C)#1 (1) {
@@ -28,4 +34,11 @@ object(C)#2 (1) {
 object(C)#3 (1) {
   ["x"]=>
   string(%d) "%snew_arg_eval.php"
+}
+object(C)#3 (1) {
+  ["x"]=>
+  object(C)#2 (1) {
+    ["x"]=>
+    string(5) "test2"
+  }
 }
