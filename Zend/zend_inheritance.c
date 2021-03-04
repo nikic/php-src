@@ -2062,13 +2062,17 @@ static void zend_do_traits_property_binding(zend_class_entry *ce, zend_class_ent
 							op2 = &traits[i]->default_properties_table[OBJ_PROP_TO_NUM(property_info->offset)];
 						}
 
-						/* if any of the values is a constant, we try to resolve it */
-						if (UNEXPECTED(Z_TYPE_P(op1) == IS_CONSTANT_AST)) {
+						/* If any of the values is a constant, we try to resolve it. Don't resolve
+						 * "dynamic" ASTs, which may have side-effects. For these we assume
+						 * incompatibility. */
+						if (UNEXPECTED(Z_TYPE_P(op1) == IS_CONSTANT_AST)
+								&& !(GC_FLAGS(Z_AST_P(op1)) & IS_AST_DYNAMIC)) {
 							ZVAL_COPY_OR_DUP(&op1_tmp, op1);
 							zval_update_constant_ex(&op1_tmp, ce);
 							op1 = &op1_tmp;
 						}
-						if (UNEXPECTED(Z_TYPE_P(op2) == IS_CONSTANT_AST)) {
+						if (UNEXPECTED(Z_TYPE_P(op2) == IS_CONSTANT_AST)
+								&& !(GC_FLAGS(Z_AST_P(op2)) & IS_AST_DYNAMIC)) {
 							ZVAL_COPY_OR_DUP(&op2_tmp, op2);
 							zval_update_constant_ex(&op2_tmp, ce);
 							op2 = &op2_tmp;
