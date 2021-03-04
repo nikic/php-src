@@ -9436,6 +9436,10 @@ void zend_compile_const_expr_magic_const(zend_ast **ast_ptr) /* {{{ */
 static void zend_compile_const_expr_new(zend_ast **ast_ptr)
 {
 	zend_ast *class_ast = (*ast_ptr)->child[0];
+	if (class_ast->kind == ZEND_AST_CLASS) {
+		zend_error_noreturn(E_COMPILE_ERROR,
+			"Cannot use anonymous class in constant expression");
+	}
 	if (class_ast->kind != ZEND_AST_ZVAL) {
 		zend_error_noreturn(E_COMPILE_ERROR,
 			"Cannot use dynamic class name in constant expression");
