@@ -5354,7 +5354,7 @@ ZEND_VM_HELPER(zend_case_helper, ANY, ANY, zval *op_1, zval *op_2)
 	if (UNEXPECTED(Z_TYPE_INFO_P(op_2) == IS_UNDEF)) {
 		op_2 = ZVAL_UNDEFINED_OP2();
 	}
-	compare_function(EX_VAR(opline->result.var), op_1, op_2);
+	compare_function_ex(EX_VAR(opline->result.var), op_1, op_2, 1);
 	if (OP2_TYPE & (IS_TMP_VAR|IS_VAR)) {
 		zval_ptr_dtor_nogc(op_2);
 	}
